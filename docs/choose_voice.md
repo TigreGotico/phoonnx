@@ -77,8 +77,8 @@ $ phoonnx-voices list-voices --verbose | grep -A6 'ID:          OpenVoiceOS/phoo
   Language:    pt-PT
   Engine:      phoonnx
   Phoneme Type: Phonemizer.TUGAPHONE
-  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.onnx
-  Config URL:  https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.json
+  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/ddaeacc8fdb74ceed69eb9f8c3b9571c8327d6b9/miro_pt-PT.onnx
+  Config URL:  https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/ddaeacc8fdb74ceed69eb9f8c3b9571c8327d6b9/phoonnx.json
 ----------------------------------------
 ```
 
@@ -122,7 +122,7 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `supertonic` | `supertonic/F1/en` | 399 MB |
 | `piper` | `OpenVoiceOS/pipertts_en-GB_miro` | 64 MB |
 | `styletts2` | `ddatt/en-styletts2` | 330 MB |
-| `pockettts` | `pockettts/en/alba` | 171 MB |
+| `pockettts` | `pockettts/en/alba` | 446 MB |
 | `coqui` | `proxectonos/brais` | 132 MB |
 | `glowtts` | `larynx/de-de-eva_k-glow_tts` | 120 MB |
 | `chatterbox` | `chatterbox/base/en` | 1548 MB |
@@ -146,6 +146,8 @@ The engine of a voice sets the size of its download. The table gives the downloa
 | `vosk` | `vosk/tamara` | 171 MB |
 | `shami` | `Tushe/shami-tts` | 113 MB |
 | `rapido` | `edwixx/pt-BR-rapido` | 267 MB |
+
+`scripts/download_sizes.py` writes these sizes to `docs/data/download_sizes.json` from the pinned files of each voice, and `tests/test_docs_verify.py` compares the table with that file.
 
 The download size is also a guide to the memory that the loaded voice takes, because the weights fill most of both. Some large voices have smaller int8 files. See [Precision variants](precision.md).
 
@@ -196,4 +198,4 @@ reads the catalog only, so it downloads nothing:
 
 ---
 
-[Docs index](index.md) · Previous: [Quickstart](quickstart.md) · Next: [Voice manager](voice_manager.md)
+[← Quickstart](quickstart.md) · [Home](index.md) · [Voice manager →](voice_manager.md)

@@ -109,8 +109,8 @@ syn_config = SynthesisConfig(
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `stages` | `Stages` | empty | The text stages of the call, from `scriptconv.frontend`. The stages table below lists its fields |
-| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to the engine, which may hold its own names (Magpie). `None` uses the speaker of the voice, or speaker 0 |
-| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code also sets `stages.lang`. `None` uses the language of the voice, or language 0 |
+| `speaker` | `int` \| `str` \| `None` | `None` | Speaker of a multi-speaker voice: an id, or a name in the voice's `speaker_id_map`. A name that the map lacks goes to an engine with names of its own (Magpie, Orpheus). Any other engine gets a `ValueError` that lists the names of the voice. `None` uses the speaker of the voice, or speaker 0 |
+| `language` | `int` \| `str` \| `None` | `None` | Language of a multi-language voice: an id, or a code in the voice's `lang_id_map`. A code that the map of a multilingual voice lacks gives a `ValueError` that lists the codes of the voice. A code also sets `stages.lang`. `None` uses the language of the voice, or language 0 |
 | `length_scale` | `float` \| `None` | `None` | Speed control: < 1 faster, > 1 slower. `None` uses the value of the voice |
 | `noise_scale` | `float` \| `None` | `None` | Generator noise: affects naturalness. `None` uses the value of the voice |
 | `noise_w_scale` | `float` \| `None` | `None` | Phoneme duration noise. `None` uses the value of the voice |
@@ -161,6 +161,7 @@ A scale comes from the first of these that sets it: the call's `SynthesisConfig`
 | `super_resolution_model` | `str` \| `None` | `None` | The `audiosronnx` engine, such as `"novasr"` or `"lavasr"`. `None` selects `"novasr"`. Ignored unless `super_resolution` is `True` |
 | `voice_conversion` | `SpeakerReference` \| `None` | `None` | Target-speaker clip, in its `audio` field, for [voice conversion](voice_conversion.md) after synthesis. It works with every engine. `None` means no conversion |
 | `voice_conversion_engine` | `str` \| `None` | `None` | The voiceclonnx engine for `voice_conversion`. `None` selects `"openvoice"` |
+| `stretch_pace` | `bool` | `False` | Time-stretch the audio of an engine that cannot change its pace (the codec language models and Shami) to the call's `length_scale`, `<prosody rate>` or `<emphasis>`, against the voice's own length scale. The pitch is kept, within 0.5x and 2x. Other engines change their pace themselves and are not stretched. [SSML](ssml.md#engines-without-pace-control) lists the engines |
 
 ### Plain data
 
@@ -168,7 +169,7 @@ A scale comes from the first of these that sets it: the call's `SynthesisConfig`
 
 ### 1.x names
 
-The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` goes to the engine as it is, as in 1.x: no voice map and no text stage reads it. Most engines read it with `int()`, so `speaker_id="40"` is the id 40, and Magpie reads it as a voice name. In the new `speaker` and `language` fields a string is a name or a code first, so `speaker="40"` is the speaker named `40`. The names and the positional form stop working in phoonnx 2.0.0.
+The flat names of phoonnx 1.x still work as keywords, attributes, `dataclasses.replace()` keywords and `SynthesisConfig.from_dict` keys. Positional arguments in the 1.x field order work too. Each use raises a `DeprecationWarning` that names the new field and points at the caller's line. A string in `speaker_id` or `lang_id` goes to the engine as it is, as in 1.x: no voice map and no text stage reads it. Most engines read it with `int()`, so `speaker_id="40"` is the id 40, and Magpie reads it as a voice name. In the new `speaker` and `language` fields a string is a name or a code first, so `speaker="40"` is the speaker named `40`. `to_dict()` writes a 1.x string under its 1.x key, so the config keeps that meaning after `from_dict()`. The names and the positional form stop working in phoonnx 2.0.0.
 
 | Flat name | Field |
 |-----------|-------|
@@ -509,8 +510,8 @@ Its message names the voice and the value that loads it.
    `DmlExecutionProvider` and `CoreMLExecutionProvider`.
 
 In every other case `auto` loads the full files. A voice that has only int8
-files, such as a Pocket TTS voice in any language but Italian, loads its int8
-files under `auto`.
+files loads them under `auto`; no voice in the bundled index has only int8
+files.
 
 ### Precision in the voice index
 
@@ -546,4 +547,4 @@ it. Use `edwixx/pt-BR-rapido` with `precision="int8"`.
 
 ---
 
-[Docs index](index.md) · Previous: [Phoneme alignment](alignment.md) · Next: [Phonemizers](phonemizers.md)
+[← Phoneme alignment](alignment.md) · [Home](index.md) · [Phonemizers →](phonemizers.md)

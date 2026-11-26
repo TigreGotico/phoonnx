@@ -206,8 +206,7 @@ def test_mixertts_round_trip(toy_22k_f0, tmp_path):
 
 
 def test_matcha_round_trip(toy_22k, tmp_path):
-    # The Matcha adapter builds a vocoder only from engine_params["vocoder_path"],
-    # so the parametric Griffin-Lim vocoder, which has no file, is set on it here.
+    # The parametric Griffin-Lim vocoder, which has no file, is set on the adapter here.
     vocoder = build_vocoder(vocoder_type="griffinlim", config=GRIFFIN_LIM["vocoder_config"])
     _round_trip("matcha", toy_22k, tmp_path, vocoder=vocoder,
                 training_ids=lambda module: _training_ids(module, lambda item: item["x"]),
@@ -240,14 +239,8 @@ def _optispeech_ids(module):
     return [int(x) for x in dataset[index]["x"]]
 
 
-@pytest.mark.xfail(strict=True, raises=rt.KnownDefect, reason=(
-    "OptiSpeech trains on the ids of its own TextProcessor (a fixed IPA table, no blanks, no "
-    "BOS/EOS), but the export writes the dataset's phoneme_id_map into model.json and the "
-    "voice encodes with that map, so synthesis feeds ids the model never read"))
 def test_optispeech_round_trip(toy_22k, tmp_path):
-    sidecar_ids = re.escape(str(rt.dataset_ids(toy_22k)))
     _round_trip("optispeech", toy_22k, tmp_path, training_ids=_optispeech_ids,
-                defect=f"the graph read .*{sidecar_ids}",
                 dim=32, n_feats=40, hop_length=256, n_fft=256, win_length=256,
                 encoder_intermediate_dim=48, decoder_intermediate_dim=48, encoder_num_layers=1,
                 decoder_num_layers=1, vocoder_dim=32, vocoder_intermediate_dim=48,

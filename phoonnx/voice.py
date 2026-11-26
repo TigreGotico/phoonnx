@@ -6,6 +6,7 @@ all ONNX-specific I/O to an engine adapter (``phoonnx.engines``),
 which means the same TTSVoice class works for VITS or
 any future architecture without code changes here.
 """
+import copy
 import hashlib
 import json
 import os.path
@@ -26,7 +27,7 @@ from typing import (Any, Callable, Iterable, Iterator, List, Mapping, Optional, 
 import numpy as np
 import onnxruntime
 from linguatag import closest_lang
-from scriptconv.frontend import Stages, TextFrontend
+from scriptconv.frontend import FrontendConfig, Stages, TextFrontend
 
 from phoonnx.alignment import UNSET, alignment_model_path, ensure_alignment_session
 from phoonnx.audio import write_wav
@@ -47,12 +48,7 @@ from phoonnx.reference_audio import load_reference_audio
 from phoonnx import audio_fx
 from phoonnx.ssml import parse_ssml
 from scriptconv.phonemizers.base import PhonemizedChunks
-from phoonnx.errors import NonFiniteAudioError, VoiceLoadError
-from phoonnx.engines.shami import ShamiAdapter
-from phoonnx.engines.vits import VitsAdapter
-from phoonnx.engines.vits_streaming import VitsStreamingAdapter
-from phoonnx.engines.xvits import XVitsAdapter
-from phoonnx.engines.yourtts import YourTTSAdapter
+from phoonnx.errors import FrontendMismatchError, NonFiniteAudioError, VoiceLoadError
 from phoonnx.tokenizer import TTSTokenizer
 from phoonnx.util import LOG
 
@@ -322,6 +318,55 @@ class AudioChunk:
         return self.audio_int16_array.tobytes()
 
 
+# engine values that name a VITS graph, which streams once it is split
+_VITS_ENGINES = ("vits", "vits_streaming", "piper", "mimic3", "coqui", "phoonnx", "transformers")
+
+
+def streaming_graphs(model_path, config_dict: dict, config_dir: str,
+                     engine_params: Optional[dict] = None) -> Tuple[Any, dict, bool]:
+    """Give the graph to open, the config ``engine_params`` of a voice, and whether it streams.
+
+    A config names its decoder graph relative to its own folder. A voice whose
+    config sets ``"streaming": true`` and names no decoder graph gets one: its
+    single VITS graph is split into an encoder and a decoder, cached next to
+    it, so it can stream with no re-export. A graph that does not split loads
+    as a normal voice. The voice streams when its config sets ``"streaming": true``,
+    it has a decoder graph, and its engine is unset or a VITS one; it then reads
+    the encoder graph through the ``vits_streaming`` adapter.
+    """
+    params = config_dict.get("engine_params") or {}
+    if params.get("decoder_path") and not os.path.isabs(params["decoder_path"]):
+        params = {**params, "decoder_path": os.path.join(config_dir, params["decoder_path"])}
+    has_decoder = bool(params.get("decoder_path") or (engine_params or {}).get("decoder_path"))
+    if config_dict.get("streaming") and not has_decoder:
+        try:
+            from phoonnx.engines.vits_split import ensure_split_vits
+            model_path, decoder_path = ensure_split_vits(str(model_path))
+            params = {**params, "decoder_path": decoder_path}
+            has_decoder = True
+        except Exception as e:
+            LOG.warning(f"Streaming requested but auto-split of '{model_path}' failed ({e}); "
+                        f"loading as a normal single-graph voice.")
+    engine = getattr(config_dict.get("engine"), "value", config_dict.get("engine")) or "vits"
+    streams = bool(config_dict.get("streaming")) and has_decoder and str(engine).lower() in _VITS_ENGINES
+    return model_path, params, streams
+
+
+def check_num_symbols(config: VoiceConfig, adapter: BaseOnnxAdapter, source: object) -> None:
+    """Raise VoiceLoadError when a VITS-family vocabulary uses an id the embedding does not have.
+
+    num_symbols sizes the embedding of a VITS-family graph only; other engines
+    carry the field without using it.
+    """
+    if not adapter.VITS_GRAPH or not isinstance(config.tokenizer, TTSTokenizer):
+        return
+    ids = [i for value in config.tokenizer.vocabulary.char2idx.values()
+           for i in (value if isinstance(value, list) else [value])]
+    if ids and max(ids) >= config.num_symbols:
+        raise VoiceLoadError(f"{source}: the vocabulary uses id {max(ids)}, but the model "
+                             f"has num_symbols={config.num_symbols}")
+
+
 @dataclass
 class TTSVoice:
     session: onnxruntime.InferenceSession
@@ -358,6 +403,8 @@ class TTSVoice:
     _frontend_phonemizer: Optional[BasePhonemizer] = field(default=None, init=False, repr=False,
                                                            compare=False)
     _frontend_key: Any = field(default=None, init=False, repr=False, compare=False)
+    # The frontend that with_frontend gave this voice; it replaces the one built from the phonemizer.
+    _pinned_frontend: Optional[TextFrontend] = field(default=None, init=False, repr=False, compare=False)
     # The encoder, with the frontend, tokenizer and adapter it was built from.
     _encoder: Optional[Encoder] = field(default=None, init=False, repr=False, compare=False)
     _encoder_parts: Tuple[Any, ...] = field(default=(), init=False, repr=False, compare=False)
@@ -542,6 +589,7 @@ class TTSVoice:
             warmup: bool = False,
             phonemizer_lang: Optional[str] = None,
             threads: Optional[int] = None,
+            frontend: Optional[Union[FrontendConfig, TextFrontend]] = None,
     ) -> "TTSVoice":
         """
         Load a TTS voice ONNX model and its configuration into a TTSVoice instance.
@@ -593,33 +641,15 @@ class TTSVoice:
         resolved_providers = resolve_providers(providers, use_cuda=use_cuda)
         resolved_threads = resolve_threads(threads)
 
-        # Auto-split: a voice may request streaming on a monolithic single-graph
-        # VITS model. When it declares "streaming": true but ships no decoder
-        # graph, split the model into an encoder/decoder pair on the fly (cached
-        # next to the model) so it can stream without a re-export. If the model
-        # is not a splittable VITS, fall back to loading it as a normal voice.
-        _cfg_ep = config_dict.get("engine_params") or {}
-        if _cfg_ep.get("decoder_path") and not os.path.isabs(_cfg_ep["decoder_path"]):
-            # a config names its decoder graph relative to its own folder
-            _cfg_ep = {**_cfg_ep, "decoder_path": os.path.join(
-                os.path.dirname(os.path.abspath(config_path)), _cfg_ep["decoder_path"])}
-            config_dict["engine_params"] = _cfg_ep
-        _has_decoder = _cfg_ep.get("decoder_path") or (engine_params or {}).get("decoder_path")
-        if config_dict.get("streaming") and not _has_decoder:
-            try:
-                from phoonnx.engines.vits_split import ensure_split_vits
-                enc_path, dec_path = ensure_split_vits(str(model_path))
-                model_path = enc_path
-                config_dict["engine_params"] = {**_cfg_ep, "decoder_path": dec_path}
-            except Exception as e:
-                LOG.warning(f"Streaming requested but auto-split of "
-                            f"'{model_path}' failed ({e}); loading as a normal "
-                            f"single-graph voice.")
+        model_path, config_params, streams = streaming_graphs(
+            model_path, config_dict, os.path.dirname(os.path.abspath(config_path)), engine_params)
+        if config_params:
+            config_dict["engine_params"] = config_params
 
         session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
 
         # Auto-detect engine adapter from config + session
-        adapter = detect_engine(config=config_dict, session=session)
+        adapter = get_adapter("vits_streaming") if streams else detect_engine(config=config_dict, session=session)
 
         # Engine-specific params (e.g. Matcha's vocoder_path) come either from
         # the caller (the voice manager injects locally-downloaded paths) or
@@ -644,16 +674,8 @@ class TTSVoice:
             engine_params=engine_params,
         )
 
-        # num_symbols sizes the embedding of a VITS-family graph only; other engines
-        # carry the field without using it.
-        if isinstance(adapter, (VitsAdapter, VitsStreamingAdapter, YourTTSAdapter, ShamiAdapter, XVitsAdapter)) \
-                and "num_symbols" in config_dict \
-                and isinstance(voice_config.tokenizer, TTSTokenizer):
-            ids = [i for value in voice_config.tokenizer.vocabulary.char2idx.values()
-                   for i in (value if isinstance(value, list) else [value])]
-            if ids and max(ids) >= voice_config.num_symbols:
-                raise VoiceLoadError(f"{config_path}: the vocabulary uses id {max(ids)}, but the model "
-                                     f"has num_symbols={voice_config.num_symbols}")
+        if "num_symbols" in config_dict:
+            check_num_symbols(voice_config, adapter, config_path)
 
         voice = TTSVoice(
             config=voice_config,
@@ -661,8 +683,49 @@ class TTSVoice:
             adapter=adapter,
             model_path=str(model_path),
         )
+        if frontend is not None:
+            voice = voice.with_frontend(frontend)
         if warmup:
             voice.warmup()
+        return voice
+
+    def with_frontend(self, frontend: Union[FrontendConfig, TextFrontend],
+                      probe_text: Optional[str] = None) -> "TTSVoice":
+        """A voice that reads text through *frontend*, and shares this voice's session, tokenizer and adapter.
+
+        The new frontend must give the symbols this voice was trained on: the same
+        alphabet, and the same choice to keep or drop punctuation. With *probe_text*,
+        the new frontend phonemizes it, and every symbol must be in the voice
+        vocabulary. A raw-text engine reads no symbols, so it skips the probe.
+        Later phonemizer changes do not reach the new voice: its frontend stays fixed.
+
+        Raises:
+            FrontendMismatchError: the alphabet or the punctuation setting differs,
+                or the probe gives a symbol that the vocabulary lacks.
+        """
+        if isinstance(frontend, FrontendConfig):
+            frontend = TextFrontend(frontend)
+        own = self.frontend
+        for name, new, old in (("alphabet", frontend.backend.alphabet, own.backend.alphabet),
+                               ("keep_punctuation", frontend.config.keep_punctuation,
+                                own.config.keep_punctuation)):
+            if new != old:
+                raise FrontendMismatchError(f"the frontend gives {name} {new!r}, and the voice reads {old!r}")
+        if probe_text and self.adapter.takes_symbols:
+            tokenizer = copy.copy(self.tokenizer)
+            tokenizer.not_found_characters = set()
+            encoder = (self.adapter.make_encoder(self.config, frontend, tokenizer)
+                       if isinstance(self.adapter, BaseOnnxAdapter) else SymbolEncoder(frontend, tokenizer))
+            for _ in encoder.encode(probe_text, SynthesisConfig()):
+                pass
+            if tokenizer.not_found_characters:
+                raise FrontendMismatchError(
+                    f"the frontend gives symbols that the voice vocabulary lacks: "
+                    f"{sorted(tokenizer.not_found_characters)}")
+        voice = copy.copy(self)
+        voice.phonemizer = frontend.backend
+        voice._pinned_frontend = frontend
+        voice._encoder = None
         return voice
 
     @property
@@ -684,6 +747,8 @@ class TTSVoice:
         ``normalizer`` builds a new frontend. The frontend applies the voice's
         ``text_casing`` after normalisation, as training did.
         """
+        if self._pinned_frontend is not None:
+            return self._pinned_frontend
         phonemizer = self.phonemizer
         key = (self.config.phoneme_type, self.config.lang_code, self.config.phonemizer_lang,
                self.config.text_casing, phonemizer.keep_punctuation, phonemizer.normalizer)
@@ -832,8 +897,12 @@ class TTSVoice:
 
         :param text: The text to read.
         :param config: The synthesis settings. Only the text settings apply.
+        :raises ValueError: If ``config.language`` is a code that the
+            ``lang_id_map`` of a multilingual voice lacks.
         """
         config = self._with_voice_defaults(config or SynthesisConfig())
+        # An unknown language code fails here, before the phonemizer reads it.
+        self._language_id(config.language)
         LOG.debug("text=%s", text)
         spoken = text
         if self.phonetic_spellings and config.phonetic_spellings:
@@ -1075,7 +1144,8 @@ class TTSVoice:
         sr_engine = self._load_super_resolution(config)
         vc = self._load_voice_conversion(config)
         whole_sentence = (config.audio.normalize or config.audio.target_loudness is not None
-                          or sr_engine is not None or vc is not None)
+                          or sr_engine is not None or vc is not None
+                          or self._pace_stretch(config) != 1.0)
         for utterance in self.prepare(text, config):
             if whole_sentence:
                 yield self._render(utterance, config, False, sr_engine, vc)
@@ -1136,6 +1206,16 @@ class TTSVoice:
             utterance.ids, syn_config, include_alignments, utterance.streams,
             text=utterance.text)
 
+        factor = self._pace_stretch(syn_config)
+        mono = np.squeeze(np.asarray(audio, dtype=np.float32))
+        if factor != 1.0 and mono.ndim <= 1:  # a stretch is for one channel of samples
+            mono = mono.reshape(-1)
+            stretched = audio_fx.time_stretch(mono, factor, self.config.sample_rate)
+            if phoneme_id_samples is not None:
+                phoneme_id_samples = _stretched_counts(phoneme_id_samples,
+                                                       len(stretched) / max(1, mono.size))
+            audio = stretched
+
         audio = self._level(audio, syn_config)
 
         phoneme_alignments = self._reconstruct_alignments(
@@ -1159,6 +1239,37 @@ class TTSVoice:
             phoneme_id_samples=phoneme_id_samples,
             phoneme_alignments=phoneme_alignments,
         )
+
+    def _voice_length_scale(self) -> Any:
+        """The voice's own length scale, the one a call's is measured against: the voice's
+        ``engine_params``, then its ``inference`` block, then the engine's default, then 1.
+        It is the order in which :meth:`_request` merges them."""
+        engine_params = getattr(self.config, "engine_params", None) or {}
+        for value in (engine_params.get("length_scale"), self.config.length_scale,
+                      self.adapter.default_params().get("length_scale")):
+            if value is not None:
+                return value
+        return 1.0
+
+    def _pace_stretch(self, syn_config: SynthesisConfig) -> float:
+        """How much ``audio.stretch_pace`` stretches this call's audio (1.0: not at all).
+
+        Only an engine without pace control is stretched. The factor is the call's length
+        scale (``extra`` first, then ``length_scale``) over the voice's own
+        (:meth:`_voice_length_scale`), within 0.5 to 2.
+        """
+        if not syn_config.audio.stretch_pace or self.adapter.PACE_CONTROL:
+            return 1.0
+        call = syn_config.extra.get("length_scale", syn_config.length_scale)
+        if call is None:
+            return 1.0
+        try:
+            factor = float(call) / float(self._voice_length_scale())
+        except (TypeError, ValueError, ZeroDivisionError):
+            return 1.0
+        if not np.isfinite(factor) or factor <= 0 or abs(factor - 1.0) < 1e-3:
+            return 1.0
+        return min(2.0, max(0.5, factor))
 
     @staticmethod
     def _with_params(syn_config: SynthesisConfig, utterance: Utterance) -> SynthesisConfig:
@@ -1288,7 +1399,10 @@ class TTSVoice:
         The markup is read by :func:`phoonnx.ssml.parse_ssml`. ``<break>``, ``<p>`` and ``<s>``
         become silence; ``<prosody rate>`` and ``<emphasis>`` change the length scale (a rate of
         1.25 is ``length_scale / 1.25``); ``<prosody volume>`` scales the samples; ``<prosody
-        pitch>`` and ``vocal-tract-length`` shift the finished audio (:mod:`phoonnx.audio_fx`);
+        pitch>`` is made by an engine with pitch controls of its own (``pitch_shift_params``), and
+        else shifts the finished audio (:mod:`phoonnx.audio_fx`), as ``vocal-tract-length`` always
+        does; ``<prosody range>`` reaches only an engine with a range control
+        (``pitch_range_params``);
         ``<prosody duration>`` and ``amazon:max-duration`` stretch the speech to the time asked
         for (within a factor of two); ``<lang>`` (or ``xml:lang`` on any element) picks the language
         id of a multilingual voice when it has one (a monolingual voice says the words in its own
@@ -1314,6 +1428,9 @@ class TTSVoice:
         """
         base = syn_config or SynthesisConfig()
         base_length = base.length_scale
+        if base_length is None:
+            # the voice's own length scale, in the order _request merges it
+            base_length = (getattr(self.config, "engine_params", None) or {}).get("length_scale")
         if base_length is None:
             base_length = self.config.length_scale
         if base_length is None:
@@ -1400,7 +1517,12 @@ class TTSVoice:
             lang_id = self._lang_id_for(piece.voice_lang or piece.lang)
             if lang_id is not None:
                 settings["language"] = lang_id
+            native, shifted = self._native_pitch(piece, base)
+            if native:
+                settings["extra"] = {**base.extra, **native}
             piece_config = replace(base, **settings) if settings else base
+            # The engine made the prosody pitch itself: only the vocal tract is left to the audio.
+            effects_piece = replace(piece, pitch=getattr(piece, "tract", 0.0)) if shifted else piece
             if rate is not None:
                 # The silence and the marks ahead of this speech do not wait for it to be made: a
                 # listener should not wait for the model to hear the pause they asked for.
@@ -1415,12 +1537,63 @@ class TTSVoice:
                 yield from before_audio(chunk.sample_rate)
                 if piece.breaths and index and index % piece.breaths[2] == 0:
                     yield passed(tone("breath", piece.breaths[1], piece.breaths[0], chunk.sample_rate))
-                chunk = self._with_effects(chunk, piece, seed=None if seed is None else seed + 1000 + index)
+                chunk = self._with_effects(chunk, effects_piece,
+                                           seed=None if seed is None else seed + 1000 + index)
                 yield passed(self._declicked(chunk))
             # A piece that made no audio still owes its pause and its marks.
             yield from before_audio(rate or self.config.sample_rate)
         for piece in waiting:  # no words at all: the model's own rate
             yield from sound(piece, self.config.sample_rate)
+
+    def _native_pitch(self, piece: Any, base: SynthesisConfig) -> Tuple[Dict[str, Any], bool]:
+        """The engine's own pitch keys for a piece's ``<prosody pitch>`` and ``range``, and
+        whether they make the pitch shift (else it is left to the finished audio).
+
+        The keys build on the engine's settings as the call resolves them: its defaults, the
+        voice's ``engine_params``, then the call's ``extra``. The range is applied first, then
+        the shift. The part of the pitch that ``vocal-tract-length`` asks for is never sent to
+        the engine: it moves the formants too, which only the audio shift does.
+        """
+        # pitch and tract are each within +-12 st, so their difference can reach 24
+        semitones = max(-12.0, min(12.0, piece.pitch - getattr(piece, "tract", 0.0)))
+        pitch_range = getattr(piece, "pitch_range", 1.0)
+        if not semitones and pitch_range == 1.0:
+            return {}, False
+        params = {**self.adapter.default_params(),
+                  **(getattr(self.config, "engine_params", None) or {}), **base.extra}
+        session = getattr(self, "session", None)
+        speaker = self._pitch_speaker(base)
+        keys: Dict[str, Any] = {}
+        if pitch_range != 1.0:
+            ranged = self.adapter.pitch_range_params(pitch_range, params, session, speaker)
+            if isinstance(ranged, Mapping):
+                keys.update(ranged)
+                params.update(ranged)
+        shifted = False
+        if semitones:
+            shift = self.adapter.pitch_shift_params(semitones, params, session, speaker)
+            if isinstance(shift, Mapping) and shift:
+                keys.update(shift)
+                shifted = True
+        return keys, shifted
+
+    def _pitch_speaker(self, syn_config: SynthesisConfig) -> Optional[int]:
+        """The speaker id a call resolves to, as :meth:`_request` resolves it: the call's
+        speaker (a name through the voice's ``speaker_id_map``), else the voice's default on a
+        multi-speaker voice. ``None`` when there is none, which the engine reads as speaker 0:
+        a single-speaker voice, a multi-speaker voice without a default, or a name only the
+        engine knows."""
+        config = self.config
+        try:
+            speaker = self._speaker_id(syn_config.speaker)
+        except (ValueError, AttributeError):
+            return None
+        if speaker is None and (getattr(config, "num_speakers", 1) or 1) > 1:
+            speaker = getattr(config, "default_speaker_id", None)
+        try:
+            return None if speaker is None else int(speaker)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _fitted(chunks: list, piece: Any) -> list:
@@ -1484,15 +1657,40 @@ class TTSVoice:
     def _speaker_id(self, speaker: Optional[Union[int, str]]) -> Optional[Union[int, str]]:
         """The speaker that the engine gets: the id of a name in the voice's
         ``speaker_id_map``, or else *speaker* as it is. An engine with its own
-        speaker names, such as Magpie, reads a name that the map lacks."""
-        if isinstance(speaker, str) and not isinstance(speaker, _LegacyId) \
-                and speaker in self.config.speaker_id_map:
-            return int(self.config.speaker_id_map[speaker])
+        speaker names, such as Magpie, reads a name that the map lacks.
+
+        Raises:
+            ValueError: If *speaker* is a name that the map lacks and the engine has no
+                speaker names of its own.
+        """
+        if isinstance(speaker, str) and not isinstance(speaker, _LegacyId):
+            if speaker in self.config.speaker_id_map:
+                return int(self.config.speaker_id_map[speaker])
+            # A digit string is an id, which the engine reads with int().
+            if not self.adapter.SPEAKER_NAMES and not speaker.isdigit():
+                raise ValueError(f"voice {self._voice_name} has no speaker {speaker!r}. "
+                                 f"Its speakers are: {sorted(self.config.speaker_id_map)}")
         return speaker
+
+    def _language_id(self, language: Optional[Union[int, str]]) -> Optional[Union[int, str]]:
+        """The language that the engine gets: the id of a code in the voice's
+        ``lang_id_map``, or else *language* as it is. A code on a voice with no map
+        gives ``None``, because the code then only sets the text-stage language.
+
+        Raises:
+            ValueError: If *language* is a code that the map of a multilingual voice lacks.
+        """
+        if not isinstance(language, str) or isinstance(language, _LegacyId):
+            return language
+        language_id = self._lang_id_for(language)
+        if language_id is None and self.config.lang_id_map:
+            raise ValueError(f"voice {self._voice_name} has no language {language!r}. "
+                             f"Its languages are: {sorted(self.config.lang_id_map)}")
+        return language_id
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""
-        mapping = getattr(self.config, "lang_id_map", None) or {}
+        mapping = self.config.lang_id_map
         if not tag or not mapping:
             return None
         wanted = tag.replace("_", "-").lower()
@@ -1572,6 +1770,8 @@ class TTSVoice:
         })
         # Override with any engine-specific extras from voice config
         params.update(self.config.engine_params)
+        # The voice's own length scale, before the call changes it
+        voice_length = params.get("length_scale")
         # Override with per-call SynthesisConfig
         if syn_config.noise_scale is not None:
             params["noise_scale"] = syn_config.noise_scale
@@ -1582,12 +1782,24 @@ class TTSVoice:
         # Engine-specific extras from SynthesisConfig
         params.update(syn_config.extra)
         # An engine with a speed key of its own gets it from the length scale,
-        # unless the voice config or the call names that key itself.
+        # unless the voice config or the call names that key itself. A call that
+        # changes the length scale (an SSML rate, or a length_scale of its own)
+        # still scales a speed the voice config names: the configured speed is the
+        # voice's normal pace, and the call's change is relative to the voice's own
+        # length scale. A speed the call names wins outright.
         if "length_scale" in params:
-            named = {**self.config.engine_params, **syn_config.extra}
-            params.update({key: value for key, value
-                           in self.adapter.length_scale_params(params["length_scale"]).items()
-                           if key not in named})
+            named, extra = self.config.engine_params, syn_config.extra
+            own = self.adapter.length_scale_params(params["length_scale"])
+            params.update({key: value for key, value in own.items()
+                           if key not in named and key not in extra})
+            base = 1.0 if voice_length is None else voice_length
+            if params["length_scale"] != base:
+                normal = self.adapter.length_scale_params(base)
+                params.update({key: float(named[key]) * value / normal[key]
+                               for key, value in own.items()
+                               if key in named and key not in extra and normal.get(key)
+                               and isinstance(named[key], (int, float))
+                               and not isinstance(named[key], bool)})
         # Voice cloning: hand the cloning adapter the reference clip and — for
         # in-context engines (ZipVoice) — the prompt tokens of its transcription.
         reference = syn_config.reference or SpeakerReference()
@@ -1618,9 +1830,7 @@ class TTSVoice:
         speaker_id = self._speaker_id(syn_config.speaker)
         if speaker_id is None and self.config.num_speakers > 1:
             speaker_id = self.config.default_speaker_id
-        language_id = syn_config.language
-        if isinstance(language_id, str) and not isinstance(language_id, _LegacyId):
-            language_id = self._lang_id_for(language_id)
+        language_id = self._language_id(syn_config.language)
 
         return AdapterSynthesisRequest(
             phoneme_ids=phoneme_ids_array,

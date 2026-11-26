@@ -49,6 +49,7 @@ Copyright Supertone Inc.) from Supertone's official ``py/helper.py`` inference r
 in the ``Supertone/supertonic-3`` model card.
 """
 import json
+import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -163,29 +164,68 @@ def load_unicode_indexer(path: str) -> List[int]:
     return table
 
 
-def length_to_mask(length: int) -> np.ndarray:
-    """Binary mask of shape (1, 1, length), all-ones (phoonnx synthesizes one
-    unpadded chunk at a time, so there is never any padding to mask out)."""
-    return np.ones((1, 1, max(length, 0)), dtype=np.float32)
+def length_to_mask(length: int, size: Optional[int] = None) -> np.ndarray:
+    """Binary mask of shape (1, 1, size): ones for the first ``length`` positions, zeros after.
+
+    ``size`` is ``length`` unless the input is padded to a fixed shape (see
+    :func:`bucket_size`), in which case the zeros are the padding the graphs must ignore."""
+    length = max(length, 0)
+    mask = np.zeros((1, 1, max(size if size is not None else length, length)), dtype=np.float32)
+    mask[..., :length] = 1.0
+    return mask
+
+
+def bucket_size(length: int, floor: int) -> int:
+    """The shape a ``length``-long input is padded to: ``floor``, doubled until it fits.
+
+    ``floor`` of 0 or less keeps the exact length (no padding)."""
+    if floor <= 0 or length <= 0:
+        return max(length, 0)
+    size = floor
+    while size < length:
+        size *= 2
+    return size
 
 
 def sample_noisy_latent(duration_s: float, sample_rate: int, base_chunk_size: int,
                          chunk_compress_factor: int, latent_dim: int,
-                         rng: Optional[np.random.Generator] = None):
-    """Gaussian noise seed for the Euler ODE loop, shaped from the predicted duration."""
+                         rng: Optional[np.random.Generator] = None, pad_to: int = 0):
+    """Gaussian noise seed for the Euler ODE loop, shaped from the predicted duration.
+
+    With ``pad_to`` the latent and its mask are padded to the :func:`bucket_size` of its length
+    (zeros past the real frames); the real length is ``latent_mask.sum()``."""
     rng = rng or np.random.default_rng()
     wav_len = max(int(duration_s * sample_rate), 1)
     chunk_size = base_chunk_size * chunk_compress_factor
     latent_len = (wav_len + chunk_size - 1) // chunk_size
     latent_len = max(latent_len, 1)
     dim = latent_dim * chunk_compress_factor
-    noisy_latent = rng.standard_normal((1, dim, latent_len)).astype(np.float32)
-    latent_mask = length_to_mask(latent_len)
-    return noisy_latent * latent_mask, latent_mask
+    size = bucket_size(latent_len, pad_to)
+    latent_mask = length_to_mask(latent_len, size)
+    # Drawn at the real length and then padded with zeros, so one seed gives the same noise at the
+    # real frames with or without padding.
+    noisy_latent = np.zeros((1, dim, size), np.float32)
+    noisy_latent[..., :latent_len] = rng.standard_normal((1, dim, latent_len)).astype(np.float32)
+    return noisy_latent, latent_mask
+
+
+#: Environment variable that sets both shape floors for every SuperTonic voice that does not set
+#: its own (see :meth:`SuperTonicAdapter._pad_floors`). Unset or 0: no padding.
+PAD_ENV = "PHOONNX_SUPERTONIC_PAD_TO"
 
 
 class SuperTonicAdapter(BaseOnnxAdapter):
-    """Adapter for SuperTonic (4-graph flow-matching, fixed per-speaker style)."""
+    """Adapter for SuperTonic (4-graph flow-matching, fixed per-speaker style).
+
+    Optional, off by default: ``pad_text_to`` and ``pad_latent_to`` of ``engine_params`` (or the
+    environment variable ``PHOONNX_SUPERTONIC_PAD_TO`` for both) pad every call to a fixed shape,
+    doubled for an input that does not fit. A CUDA session pays a set-up cost of 0.1 to 0.2 s each
+    time one of its four graphs sees a shape different from the last, which on a Tesla P40 was
+    most of a 1.3 s request (0.55 s padded). The padding is **not** invisible to the graphs:
+    with the same noise the padded text encoder output differs by 4 to 12 % at the real positions
+    and the padded vector estimator makes a different, equally intelligible sample (as far from
+    the unpadded one as another noise draw is). Turn it on for speed, not for bit-equal output.
+    """
 
     def __init__(self, total_step: int = 8, speed: float = 1.05, silence_duration: float = 0.3):
         self.duration_predictor: Optional[onnxruntime.InferenceSession] = None
@@ -201,10 +241,26 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         self.total_step = int(total_step)
         self.speed = float(speed)
         self.silence_duration = float(silence_duration)
+        #: None = decide by the execution provider; an int (0 = never) = always.
+        self.pad_text_to: Optional[int] = None
+        self.pad_latent_to: Optional[int] = None
 
     def default_params(self) -> Dict[str, float]:
         return {"total_step": float(self.total_step), "speed": self.speed,
                 "silence_duration": self.silence_duration}
+
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        """SuperTonic's ``speed`` for a VITS-style ``length_scale``.
+
+        The predicted durations are divided by ``speed``, so it is a rate, and its
+        default is not 1 (1.05). The length scale scales that default: 1 leaves the voice
+        as it is, 2 makes it twice as slow. Without this, ``<prosody rate>``, the pace of
+        ``<emphasis>`` and a ``length_scale`` in a call or in the voice config never reached
+        the model. A ``speed`` in a call's ``extra`` wins. A ``speed`` in the
+        voice's ``engine_params`` is the voice's normal pace: a call's rate scales it, the
+        voice config's own ``length_scale`` does not (``TTSVoice``).
+        """
+        return {"speed": self.speed / length_scale}
 
     def configure(self, voice_config: Any) -> None:
         """Load the three auxiliary graphs, the tts.json config, the unicode indexer
@@ -248,6 +304,20 @@ class SuperTonicAdapter(BaseOnnxAdapter):
             self.speed = float(ep["speed"])
         if "silence_duration" in ep:
             self.silence_duration = float(ep["silence_duration"])
+        if "pad_text_to" in ep:
+            self.pad_text_to = int(ep["pad_text_to"])
+        if "pad_latent_to" in ep:
+            self.pad_latent_to = int(ep["pad_latent_to"])
+
+    def _pad_floors(self, session: onnxruntime.InferenceSession) -> tuple:
+        """(text, latent) shape floors for this call: the voice's own, else the environment's,
+        else 0 (exact shapes)."""
+        try:
+            env = max(int(os.environ.get(PAD_ENV, "0") or 0), 0)
+        except ValueError:
+            env = 0
+        return (env if self.pad_text_to is None else self.pad_text_to,
+                env if self.pad_latent_to is None else self.pad_latent_to)
 
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Preprocess + chunk raw text, then map each chunk through the standard
@@ -256,8 +326,7 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         dropped with a warning, the same as every other tokenizer-backed engine."""
         if self.tokenizer is None:
             raise RuntimeError("SuperTonic voice missing unicode_indexer_path in engine_params")
-        cfg = getattr(voice, "config", None)
-        lang = (getattr(cfg, "lang_code", None) or "en").split("-")[0].lower()
+        lang = (voice.config.lang_code or "en").split("-")[0].lower()
         if lang not in AVAILABLE_LANGS:
             raise ValueError(f"Invalid language for supertonic: {lang}")
         max_len = 120 if lang in ("ko", "ja") else 300
@@ -273,8 +342,12 @@ class SuperTonicAdapter(BaseOnnxAdapter):
             raise RuntimeError("SuperTonic voice missing style_path (per-speaker style) "
                                "in engine_params")
 
-        text_ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
-        text_mask = length_to_mask(text_ids.shape[1])
+        text_floor, latent_floor = self._pad_floors(session)
+        ids = np.asarray(request.phoneme_ids, np.int64).reshape(1, -1)
+        text_size = bucket_size(ids.shape[1], text_floor)
+        text_ids = np.zeros((1, text_size), np.int64)
+        text_ids[:, :ids.shape[1]] = ids
+        text_mask = length_to_mask(ids.shape[1], text_size)
 
         p = request.params
         total_step = int(p.get("total_step", self.total_step))
@@ -291,7 +364,10 @@ class SuperTonicAdapter(BaseOnnxAdapter):
 
         xt, latent_mask = sample_noisy_latent(
             float(np.asarray(duration).reshape(-1)[0]), self.sample_rate,
-            self.base_chunk_size, self.chunk_compress_factor, self.latent_dim)
+            self.base_chunk_size, self.chunk_compress_factor, self.latent_dim,
+            pad_to=latent_floor)
+        frames = int(latent_mask.sum())
+        padded = latent_mask.shape[-1] != frames
 
         total_step_np = np.array([total_step], np.float32)
         for step in range(total_step):
@@ -301,9 +377,14 @@ class SuperTonicAdapter(BaseOnnxAdapter):
                 "text_mask": text_mask, "latent_mask": latent_mask,
                 "current_step": current_step, "total_step": total_step_np,
             })
+            if padded:
+                xt = xt * latent_mask
 
         wav, *_ = self.vocoder.run(None, {"latent": xt})
+        # What the padded frames made is cut off: one frame is `chunk_size` samples.
         audio = np.asarray(wav, np.float32).reshape(-1)
+        if padded:
+            audio = audio[:frames * self.base_chunk_size * self.chunk_compress_factor]
         return AdapterSynthesisResult(audio=audio, extras={"duration": float(np.asarray(duration).reshape(-1)[0])})
 
     # build_feed_dict / parse_outputs are required by the ABC but unused — synthesize()

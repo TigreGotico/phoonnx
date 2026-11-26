@@ -85,4 +85,4 @@ The voice manager downloads these graphs with the main model and gives their loc
 
 ---
 
-[Docs index](index.md) · Previous: [Indic Parler-TTS](training/engines/indic_parler.md) · Next: [Engine architecture](engines.md)
+[← Indic Parler-TTS](training/engines/indic_parler.md) · [Home](index.md) · [Engine architecture →](engines.md)

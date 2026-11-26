@@ -118,6 +118,19 @@ class F5TTSAdapter(BaseOnnxAdapter):
             "speed": self._speed,
         }
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        """F5-TTS's ``speed`` for a VITS-style ``length_scale``.
+
+        The generated length is the reference's frames per character times the text's
+        characters, divided by ``speed``, so it is a rate: twice as slow is half the speed.
+        Without this, ``<prosody rate>``, the pace of ``<emphasis>`` and a ``length_scale``
+        in a call or in the voice config never reached the model. A ``speed`` in a call's
+        ``extra`` wins. A ``speed`` in the voice's ``engine_params`` (the published voices
+        write 1.0) is the voice's normal pace: a call's rate scales it, the voice config's
+        own ``length_scale`` does not (``TTSVoice``).
+        """
+        return {"speed": self._speed / length_scale}
+
     def configure(self, voice_config: Any) -> None:
         """Load auxiliary ONNX graphs and optional vocoder from engine_params."""
         ep = voice_config.engine_params
@@ -159,9 +172,8 @@ class F5TTSAdapter(BaseOnnxAdapter):
 
         # The pinyin text function adds a space between the reference and the
         # generation text in some cases (see _join_space).
-        phoneme_type = getattr(voice_config, "phoneme_type", None)
         self._text_tokens = None
-        if getattr(phoneme_type, "value", phoneme_type) == "f5tts_pinyin":
+        if voice_config.phoneme_type == "f5tts_pinyin":
             from scriptconv.phonemizers.f5tts import F5TTSPinyinPhonemizer
             self._text_tokens = F5TTSPinyinPhonemizer().text_tokens
 

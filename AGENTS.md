@@ -31,7 +31,7 @@ uv pip install --python .venv/bin/python --prerelease=allow -e '.[test,train,tra
 .venv/bin/python -m pytest -q tests/test_cli.py
 ```
 
-Run the test files one at a time. CI installs `.[test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld]` on Python 3.11 to 3.14, with the `espeak-ng` system package (`.github/workflows/build-tests.yml`).
+Run the test files one at a time. CI installs `.[test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld,train-features]` on Python 3.11 to 3.14, with the `espeak-ng` system package (`.github/workflows/build-tests.yml`).
 
 ## Rules the repository enforces
 

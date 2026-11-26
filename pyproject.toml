@@ -23,37 +23,15 @@ dependencies = [
     "quebra-frases>=0.3.8a5",
     "langcodes",
     "linguatag>=0.4.1a1",
-    # >=0.0.2a107: a group of digits joined by spaces reads as one number or stays as
-    # written, and a pt word after a number takes the number's gender. Earlier floors:
-    # tdt reads prices, telephone numbers, clock times, percentages and measures in
-    # Portuguese; tdt reads a numeric
-    # date in Portuguese, a Korean number before a counter reads (사과 3개 as 사과 세 개),
-    # after text2spoken.SayAs and its digits, telephone, characters, ordinal and date readings
+    # >=0.0.2a107: a group of digits joined by spaces reads as one number or stays
+    # as written, and a pt word after a number takes the number's gender
     "text2spoken>=0.0.2a107",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a156: one consistent floor for every scriptconv extra; the same phonemes
-    # as 0.0.4a151. Earlier floors: the nemo_ipa phonemizer, which reads English for
-    # the Magpie english_phoneme sub-tokenizer as NeMo does; the Shami espeak-ng
-    # timeout grows with the length of the
-    # text; the backend revision is sc2, and scriptconv runs no probe
-    # for it; Shami reads a run of more than 15 digits digit by digit, in any
-    # decimal digit script, and gives espeak-ng the text on stdin; a backend
-    # that owns normalisation gets no casing, every backend records a revision,
-    # FrontendConfig.phonemizer_lang, a
-    # phonemizer language apart from the text language, the leokani and kolokwa phonemizers that the config schema lists,
-    # the f5tts_char and f5tts_pinyin text phonemizers of the F5-TTS
-    # voices, the dizione phonemizer of the tiny-voca voices, owned_stages on every
-    # phonemizer, TextFrontend skipping the hook for a backend that owns
-    # normalisation, TextFrontend normalising the whole text before the
-    # sentence split, TextFrontend.say_as for SSML <say-as>, Segment.text, and
-    # dizione reading a very long letter run in bounded pieces, sentences joined with
-    # the gap of the source, the Shami emphatics, and the espeak_lt_accent,
-    # hebrew_ipa, openjtalk_prosody and tltk phonemizers. Every extra relies on
-    # this floor.
-    "scriptconv[phonemizers]>=0.0.4a156",
-    # the F5-TTS pinyin text function (f5tts_pinyin) of F5-TTS v1 Base and Twi
-    # Asante segments with rjieba and reads hanzi with pypinyin
+    # >=0.0.4a185: Shami normalises each script run (#344), an Arabic run as apc (#491); every backend has get_lang (#486). Every
+    # scriptconv extra in this file relies on this floor.
+    "scriptconv[phonemizers]>=0.0.4a185",
+    # the f5tts_pinyin text function segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
     "pypinyin>=0.50",
     "unicode_rbnf",
@@ -79,16 +57,13 @@ Homepage = "https://github.com/TigreGotico/phoonnx"
 test = [
     "pytest",
     "jsonschema",
-    # tests/test_packaging_data.py builds a wheel to check that the
-    # training data files reach an installed distribution. It builds with
-    # --no-isolation, so the build backend must be present in this
-    # environment rather than fetched into an isolated one.
+    # tests/test_packaging_data.py builds a wheel with --no-isolation, so the
+    # build backend must be installed here
     "build",
     "setuptools>=68",
     "wheel",
-    # the training-engine tests train tiny models end-to-end, so the
-    # coverage/test job needs torch; the CPU wheels come from the pinned
-    # index below to avoid pulling the multi-GB CUDA build
+    # the training-engine tests train tiny models; the CPU wheels come from the
+    # pytorch-cpu index at the end of this file
     "torch>=2.3",
     "torchaudio",
     "pytorch-lightning>=2.0",
@@ -97,13 +72,11 @@ test = [
     # MOSS-TTS-Nano ships a SentencePiece text tokenizer
     "sentencepiece",
     "ahotts-g2p>=0.1.0",
-    # The eSpeak, Cotovia, AhoTTS and misaki wrappers are in scriptconv-copyleft,
-    # and the mantoq, Halabi and Iqra wrappers are in scriptconv-nonfree. These
-    # scriptconv extras install the two packages. espyak, pycotovia and
-    # ahotts-g2p stay listed here for their version floors. pt-phonemizers installs
-    # tugaphone, which the card example tests run as a backend that owns its
-    # diacritize stage.
-    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a156",
+    # scriptconv-copyleft holds the eSpeak, Cotovia, AhoTTS and misaki wrappers,
+    # and scriptconv-nonfree the mantoq, Halabi and Iqra wrappers. espyak,
+    # pycotovia and ahotts-g2p stay listed for their floors. pt-phonemizers gives
+    # tugaphone, a backend that owns its diacritize stage, for the card tests.
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a185",
     # >=0.2.1a1: mantoq reads a very long digit run digit by digit, not as one int
     "scriptconv-nonfree>=0.2.1a1",
     # >=0.3.1a1: the eSpeak wrapper gives espeak-ng the text on stdin, so a line
@@ -112,86 +85,45 @@ test = [
     # the model card tests render the text stack that the cards recommend, from
     # these libraries' own language list, call names and default model
     "text2spoken>=0.0.2a107",
-    "bifonia>=0.5.0",
+    "bifonia>=0.7.0a1",
     "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
-    # the voice-conversion post-stage's end-to-end test runs the real engine;
-    # pure-ONNX with no torch of its own, so it is cheap to have here.
+    # the voice-conversion end-to-end test runs the real engine (pure ONNX)
     "voiceclonnx>=0.0.3a3",
     "orthography2ipa>=7.112.0a1",
     # tests/test_features_json.py runs the feature-table generator, and
     # tests/test_segment_map.py cuts segments with its segment_spans();
     # 3.0 puts a tone on its tone-bearing segment as four features
-    "phonematcher>=3.0.0a1",
+    "phonematcher>=3.0.1a1",
     "o2i-lexicons>=0.1.0a1",
     "arbtok>=0.0.3a2",
     "euskaphone",
-    # kokoro-family styletts2 voices phonemize through misaki; both extras
-    # are pure-python (no heavy/compiled deps) so they belong in the base
-    # test extra, not gated behind an importorskip.
-    #
-    # DEPENDENCY CEILING: misaki's own PyPI metadata declares
-    # Requires-Python <3.13,>=3.8 (its "en" extra pulls in spacy, whose
-    # "en" chain pulls in blis, which has no Python 3.13/3.14 wheels and
-    # fails to build from source there — a Cython/NumPy-C-API break, not
-    # something phoonnx or scriptconv can work around). Verified against
-    # the actual PR #348 CI failure logs (misaki wheel resolution refuses
-    # 3.13/3.14 outright; separately, blis==0.7.11 fails to compile on
-    # 3.13 even when forced). Gate with an environment marker rather than
-    # skip a runtime check: the corresponding tests in
-    # tests/test_scriptconv_phonemizer_coverage.py are
-    # skipif(sys.version_info >= (3, 13)) with the same citation, so the
-    # extra is either installed-and-tested or provably uninstallable —
-    # never silently absent.
+    # the Kokoro-family voices phonemize through misaki. misaki declares
+    # Python <3.13, and its tests in tests/test_scriptconv_phonemizer_coverage.py
+    # skip on 3.13 and later.
     "misaki[en]; python_version<'3.13'",
     "misaki[zh]; python_version<'3.13'",
-    # misaki[en]'s own metadata leaves its "spacy" dependency version
-    # UNCONSTRAINED. Combined with this repo's CI resolving with
-    # UV_PRERELEASE=allow (needed elsewhere for OVOS alpha floor-pins),
-    # that let uv pick spacy==4.0.0.dev3 in PR#348's 3.11/3.12 CI runs.
-    # 4.0.0.dev3 isn't in spaCy's own model-compatibility table, so
-    # misaki.en.G2P()'s `spacy.cli.download("en_core_web_sm")` call hits
-    # "No compatible packages found" and does `sys.exit(1)` — surfacing
-    # as a bare SystemExit deep inside the phonemize() call, not an
-    # ImportError. Pin the same upper bound used by this repo's other
-    # spacy-consuming extras (see the `en`/`ja`/`vi`/`zh` extras below)
-    # so the [test] extra can't independently drift onto a spaCy
-    # prerelease.
+    # misaki[en] leaves spacy unbounded, so prerelease resolution can pick a
+    # spacy 4 dev build. No en_core_web_sm model fits it, and misaki then exits
+    # inside phonemize(). The en, ja, vi, zh and all extras use the same bound.
     "spacy>=3.7,<4.0; python_version<'3.13'",
-    # misaki.zh imports pypinyin.contrib.tone_convert.to_finals, added
-    # after 0.44 — older resolved versions (pulled in transitively by
-    # espnet/f5-tts) fail at import time with an ImportError
+    # misaki.zh imports pypinyin.contrib.tone_convert.to_finals, added after 0.44
     "pypinyin>=0.50",
     # cross-check reference for the Larynx/Mimic3 tokenization golden tests
     "gruut[en]>=2.3.0",
-    # reference implementation for tests/test_bpe_reader.py. phoonnx reads
-    # tokenizer.json with its own pure-Python reader (phoonnx/_bpe.py) so the
-    # install needs no compiled wheel; the test proves the reader returns the
-    # same ids as this package, byte for byte. Test-only on purpose — a wrong
-    # id makes wrong audio instead of an error, so the comparison must run in
-    # CI even though nothing ships it.
+    # the reference for tests/test_bpe_reader.py: phoonnx/_bpe.py must give
+    # the same ids, because a wrong id makes wrong audio and no error
     "tokenizers",
-    # reference implementation for tests/test_sentencepiece_reader.py. phoonnx
-    # reads tokenizer.model with its own pure-Python reader
-    # (phoonnx/_sentencepiece.py) so the Pocket TTS install needs no compiled
-    # wheel; the test proves the reader returns the same ids as this package.
-    # Test-only on purpose — a wrong id makes wrong audio instead of an error,
-    # so the comparison must run in CI even though nothing ships it.
+    # the reference for tests/test_sentencepiece_reader.py: phoonnx/_sentencepiece.py
+    # must give the same ids
     "sentencepiece",
-    # onnx uses ml_dtypes.float4_e2m1fn (added in ml_dtypes 0.5) but the
-    # resolver can pair it with ml_dtypes 0.4.x, which breaks `import onnx`
-    # at collection time; ml_dtypes>=0.5 needs numpy>=2.1 on Python 3.13+,
-    # so the split mirrors the [train] numpy markers
+    # onnx needs ml_dtypes.float4_e2m1fn (ml_dtypes 0.5), and ml_dtypes 0.5
+    # needs numpy>=2.1 on Python 3.13+, so the split follows the [train] numpy markers
     "onnx<1.18; python_version<'3.13'",
     "onnx>=1.18; python_version>='3.13'",
     "ml_dtypes>=0.5; python_version>='3.13'",
-    # ground truth for tests/test_kittentts.py's vocab-parity check: lets the
-    # test statically extract KittenTTS.__init__'s literal symbol string via
-    # ast (no instantiation, no network/hf_hub_download call) and diff it
-    # against export_kittentts.py's embedded copy, instead of trusting the
-    # "verbatim, copied not retyped" comment on faith. Pure-python, small
-    # (espeakng-loader/huggingface-hub/numpy/onnxruntime/phonemizer/
-    # soundfile deps), verified installing cleanly alongside this extra.
+    # tests/test_kittentts.py reads the KittenTTS symbol string with ast and
+    # compares it with the copy in export_kittentts.py
     "kittentts>=0.1.3",
     # the OmniVoice silence-trim tests run upstream's pydub path and the
     # fallback taken when pydub cannot import its audioop module
@@ -201,35 +133,24 @@ test = [
     # voice state with safetensors
     "safetensors",
 ]
-# Load-time auto-split of a monolithic VITS model into a streaming
-# encoder/decoder pair. Only needed to CREATE a split; a pre-split ("+RT")
-# voice streams without it. Requires the full `onnx` package for graph surgery.
+# splits a monolithic VITS model into a streaming encoder and decoder at load;
+# a pre-split ("+RT") voice streams without it
 streaming = ["onnx"]
 # The eSpeak wrapper is in scriptconv-copyleft (GPL), so an eSpeak voice needs
 # this extra even when the espeak-ng binary is installed.
-espeak = ["scriptconv[espeak]>=0.0.4a156", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+espeak = ["scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
-# runtime deps for the Pocket TTS engine (phoonnx/engines/pockettts.py):
-# safetensors for loading published voice states. The SentencePiece tokenizer
-# is read by phoonnx/_sentencepiece.py, so no compiled wheel is needed.
+# Pocket TTS reads its voice states with safetensors
 pockettts = [
     "safetensors",
 ]
-# faster/more-faithful silence trimming for the OmniVoice engine's
-# remove_silence() (phoonnx/thirdparty/omnivoice/audio.py): when absent it
-# falls back to a pure-numpy RMS-window implementation with the same
-# contract (leading/trailing/internal silence trimmed to the configured
-# padding), so this extra is a quality/perf opt-in, not a hard requirement.
-# pydub imports the stdlib audioop, which Python 3.13 removed; audioop-lts puts it back.
+# OmniVoice trims silence with pydub; without it a numpy RMS trim runs.
+# pydub imports audioop, which Python 3.13 removed and audioop-lts restores.
 omnivoice = ["pydub", "audioop-lts; python_version >= '3.13'"]
-# Indic Parler is the one engine whose vocabularies the built-in tokenizer.json
-# reader (phoonnx/_bpe.py) cannot read. Its description tokenizer is a T5
-# Unigram vocabulary, and its prompt tokenizer — the text actually spoken — is
-# BPE with `byte_fallback` and `fuse_unk`, which the reader does not implement
-# and therefore declines. Every other tokenizer.json phoonnx loads is plain BPE
-# and needs no extra.
+# phoonnx/_bpe.py cannot read the Indic Parler tokenizers: a T5 Unigram
+# vocabulary, and BPE with byte_fallback and fuse_unk
 indic-parler = ["tokenizers"]
 train = [
     # 0.42.1 fixes a trust_remote_code bypass in from_pretrained. diffusers
@@ -263,10 +184,7 @@ train = [
     "onnx<1.18; python_version<'3.13'",
     "onnx>=1.18; python_version>='3.13'",
 ]
-# extra deps for the StyleTTS2 training engine
-# (phoonnx_train/styletts2/ + phoonnx_train/engines/styletts2*.py) on top of
-# [train]: vendored yl4579 model code + PL-BERT/pitch loaders. einops is
-# already in [train].
+# StyleTTS2 training (phoonnx_train/styletts2/), on top of [train]
 train-styletts2 = [
     "einops-exts",
     "munch",
@@ -297,14 +215,9 @@ train-eval = [
 train-data = [
     "pandas",
     "pyarrow",
-    # datasets has an fsspec ceiling and every other dependency here wants the
-    # newest fsspec. With no floor the resolver satisfies both by going back to
-    # datasets 1.1.1, which uses pa.PyExtensionType, and pyarrow 25 removed it.
-    # The floor makes the resolver hold fsspec down instead of datasets.
-    # Re-test with CI's whole extra set. Resolving train-data alone gives
-    # datasets 5.0.1 with and without the floor, because the pressure on fsspec
-    # comes from the other train extras: the obvious check says the floor does
-    # nothing.
+    # datasets caps fsspec. With no floor, the resolver goes back to datasets
+    # 1.1.1, which pyarrow 25 breaks. The other train extras cause it, so test
+    # a change here with the whole CI extra set, not train-data alone.
     "datasets>=4",
     "soundfile",
 ]
@@ -314,38 +227,21 @@ train-data = [
 # map and that JSON, so these are never runtime dependencies. phonematcher 3.0
 # reads the tone of a toned phone as four of its own features.
 train-features = [
-    "phonematcher>=3.0.0a1",
+    "phonematcher>=3.0.1a1",
     "orthography2ipa>=7.124.46a4",
 ]
-# extra deps for the FastPitch / SpeedySpeech training engine
-# (phoonnx_train/engines/fastpitch.py) on top of [train]: F0 (pitch)
-# extraction in extra_preprocess uses librosa.pyin, already in [train].
+# FastPitch and SpeedySpeech training need nothing past [train]
 train-fastpitch = []
-# extra deps for the Mixer-TTS training engine (phoonnx_train/engines/mixer.py)
-# on top of [train]: the shared F0 (pitch) sidecar cache uses librosa.pyin,
-# already in [train]. einops (Mixer blocks / aligner) and numba (monotonic
-# alignment search) are also already pulled in via [train] (numba
-# transitively through librosa on <3.13).
+# Mixer-TTS training needs nothing past [train]
 train-mixer = []
-# extra deps for the MOSS-TTS-Nano training pipeline (phoonnx_train/mosstts/)
-# on top of [train]: sentencepiece for the text tokenizer, safetensors to read
-# the released checkpoint without transformers, soundfile to read audio in
-# prepare_data (the codec itself runs under onnxruntime, already a core dep),
-# and onnx for the external-data layout of the exported graphs. scipy
-# (resampling) is already in [train].
+# MOSS-TTS-Nano training (phoonnx_train/mosstts/), on top of [train]
 train-mosstts = [
     "sentencepiece",
     "safetensors",
     "soundfile",
     "onnx",
 ]
-# extra deps for the OptiSpeech training engine
-# (phoonnx_train/optispeech/ + phoonnx_train/engines/optispeech.py) on top of
-# [train]: scipy for pitch interpolation (the pitch extractor itself uses
-# librosa.pyin, already in [train]), torchaudio for the vocoder-discriminator
-# resampling / STFT losses, and onnx to embed the inference metadata into the
-# exported model. The perceptual validation metrics (UTMOS / PESQ /
-# periodicity) stay optional and are off by default, so they add no deps here.
+# OptiSpeech training (phoonnx_train/optispeech/), on top of [train]
 train-optispeech = [
     "pyloudnorm",
     "scipy",
@@ -353,40 +249,38 @@ train-optispeech = [
     "onnx",
     "opt_einsum",
 ]
-# opt-in WORLD F0 backend (f0_method="dio"/"harvest") for FastPitch,
-# Mixer-TTS, StyleTTS2-pitch and OptiSpeech: ~50x faster than the default
-# librosa.pyin backend at dataset-preprocessing time. setuptools<81 is
-# needed because pyworld imports pkg_resources at runtime.
+# the WORLD F0 backend (f0_method "dio" or "harvest"), faster than librosa.pyin.
+# pyworld imports pkg_resources, so setuptools stays below 81.
 train-pyworld = [
     "pyworld>=0.3.2",
     "setuptools<81",
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
-ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a156", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
+ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a185", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
 ca = ["epitran", "gruut[ca]>=2.3.0"]
-gl = ["scriptconv[gl]>=0.0.4a156", "pycotovia>=0.4.0a1", "epitran"]
+gl = ["scriptconv[gl]>=0.0.4a185", "pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0"]
-de = ["epitran", "gruut[de]>=2.3.0"]
+de = ["epitran", "gruut[de]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 # scriptconv-copyleft holds the misaki wrappers. The scriptconv[misaki] extra
 # would also install the Japanese, Korean and Chinese misaki engines.
 # spacy<4.0 in the en, ja, vi and zh extras: see the spacy comment in the test extra.
 en = ["epitran", "gruut[en]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[en]", "spacy>=3.7,<4.0"]
-es = ["epitran", "gruut[es]>=2.3.0"]
-eu = ["scriptconv[eu]>=0.0.4a156", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
-fa = ["epitran", "scriptconv[fa]>=0.0.4a156"]
-fr = ["epitran", "gruut[fr]>=2.3.0"]
-he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a156"]
-it = ["epitran", "gruut[it]>=2.3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a156", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
-ko = ["epitran", "scriptconv[ko]>=0.0.4a156", "g2pk", "misaki[ko]"]
+es = ["epitran", "gruut[es]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+eu = ["scriptconv[eu]>=0.0.4a185", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
+fa = ["epitran", "scriptconv[fa]>=0.0.4a185"]
+fr = ["epitran", "gruut[fr]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a185"]
+it = ["epitran", "gruut[it]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a185", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
+ko = ["epitran", "scriptconv[ko]>=0.0.4a185", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
-pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0"]
+pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a156", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-zh = ["scriptconv[zh-phonemizers]>=0.0.4a156", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
+vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+zh = ["scriptconv[zh-phonemizers]>=0.0.4a185", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
 am = ["epitran"]
@@ -426,7 +320,7 @@ lez = ["epitran"]
 lij = ["epitran"]
 lo = ["epitran"]
 lsm = ["epitran"]
-lt = ["epitran", "scriptconv[espeak]>=0.0.4a156", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+lt = ["epitran", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 luy = ["epitran"]
 lv = ["epitran"]
 mi = ["epitran"]
@@ -436,7 +330,7 @@ ms = ["epitran"]
 mt = ["epitran"]
 my = ["epitran"]
 nan = ["epitran"]
-nl = ["gruut[nl]>=2.3.0"]
+nl = ["gruut[nl]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 ny = ["epitran"]
 om = ["epitran"]
 or = ["epitran"]
@@ -456,7 +350,7 @@ ta = ["epitran"]
 te = ["epitran"]
 tg = ["epitran"]
 # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-th = ["epitran", "scriptconv[th]>=0.0.4a156; python_version < '3.14'"]
+th = ["epitran", "scriptconv[th]>=0.0.4a185; python_version < '3.14'"]
 ti = ["epitran"]
 tk = ["epitran"]
 tpi = ["epitran"]
@@ -479,13 +373,9 @@ o2i = ["orthography2ipa>=7.112.0a1", "o2i-lexicons>=0.1.0a1"]
 
 # runtime deps for zero-shot voice cloning (reference loading + resampling)
 cloning = ["soundfile", "scipy"]
-# optional post-synthesis audio super-resolution: upscale any voice to 48 kHz.
-# pure-ONNX, no torch at runtime. off by default (see the super_resolution field
-# block); models fetch from HuggingFace on first use.
+# post-synthesis super-resolution to 48 kHz (super_resolution, off by default)
 audiosr = ["audiosronnx"]
-# optional post-synthesis universal voice conversion: convert any voice's output to an
-# arbitrary target speaker. pure-ONNX, no torch at runtime. off by default (see the
-# vc_reference field block); models fetch from HuggingFace on first use.
+# post-synthesis voice conversion to a target speaker (vc_reference, off by default)
 vc = ["voiceclonnx>=0.0.3a3"]
 # Chatterbox multilingual per-language script transforms. ja/zh below; ko is pure-Python
 # (built in). he/ru degrade gracefully unless `dicta_onnx` / `russian_text_stresser` are
@@ -493,40 +383,21 @@ vc = ["voiceclonnx>=0.0.3a3"]
 chatterbox-multilingual = ["pykakasi>=2.3.0", "spacy-pkuseg"]
 # everything optional — every language phonemizer + cloning. Used by the Docker image.
 all = [
-    # scriptconv splits its phonemizers per language, so the base set
-    # alone leaves "all" without Portuguese, Arabic, English, Japanese
-    # and Chinese backends, and a voice that asks for one fails at
-    # synthesis with an ImportError. The "goruut", "stress" and "pt" extras
-    # pull in pygoruut (phoneme_type == "pygoruut" in phoonnx/config.py),
-    # stressonnx (Russian stress marks, phoonnx/lang_preprocess.py) and
-    # bifonia (scriptconv's own Portuguese backend) respectively — without
-    # them a bare `scriptconv[phonemizers,...]` install silently drops those
-    # backends and the corresponding voices fail at synthesis time. "he"
-    # pulls in phonikud-onnx: phoonnx/config.py routes Hebrew phonemization
-    # ("phoneme_type": "phonikud" in the voice_index) through scriptconv,
-    # which auto-provisions the phonikud ONNX model, so scriptconv[he] is
-    # the correct spelling rather than depending on phonikud-onnx directly.
-    # "espeak", "gl" and "eu" install scriptconv-copyleft, which holds the
-    # eSpeak, Cotovia, AhoTTS and misaki wrappers; "ar-phonemizers" installs
-    # scriptconv-nonfree, which holds the mantoq wrapper.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a156",
+    # scriptconv splits its backends by extra, and a voice whose backend is
+    # missing fails at synthesis. goruut gives pygoruut, stress gives stressonnx,
+    # pt gives bifonia, he gives phonikud-onnx, espeak, gl and eu give
+    # scriptconv-copyleft, and ar-phonemizers gives scriptconv-nonfree.
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a185",
     # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-    "scriptconv[th]>=0.0.4a156; python_version < '3.14'",
+    "scriptconv[th]>=0.0.4a185; python_version < '3.14'",
     "scriptconv-nonfree>=0.2.1a1",
     "scriptconv-copyleft>=0.3.1a1",
-    # scriptconv's own "stress" extra floors stressonnx at >=0.0.2, which
-    # resolves to the latest *stable* release. The BCP-47 language resolver
-    # phoonnx needs only shipped in the 0.0.3 alpha train, so it must be
-    # floor-pinned here explicitly or a bare-name resolution silently installs
-    # the older stable and the resolver is missing.
+    # the BCP-47 language resolver, which scriptconv[stress] also requires
     "stressonnx>=0.0.3a2",
     "text2tashkeel>=0.3.1a3",
     "epitran",
-    # Only the languages the voice_index actually routes through gruut
-    # (phoneme_type == "gruut") — de, en, fr, it, nl, ru, es, sv, sw across
-    # mimic3/glowtts/fastpitch/coqui_vits voices. ja/vi/zh are kept as-is
-    # (misaki/spacy handle those languages; gruut has no ja/vi/zh extra, so
-    # those entries are pre-existing no-ops, out of scope here).
+    # index voices read de, en, es, fr, it, nl, ru, sv and sw with gruut. gruut
+    # has no ja, vi or zh extra, so those three entries install only gruut itself.
     "gruut[de]>=2.3.0", "gruut[en]>=2.3.0", "gruut[es]>=2.3.0",
     "gruut[fr]>=2.3.0", "gruut[it]>=2.3.0", "gruut[ja]>=2.3.0",
     "gruut[nl]>=2.3.0", "gruut[ru]>=2.3.0", "gruut[sv]>=2.3.0",
@@ -541,14 +412,9 @@ all = [
     "orthography2ipa>=7.112.0a1", "o2i-lexicons>=0.1.0a1", "arbtok>=0.0.3a2", "euskaphone",
     "pydub",
     "audioop-lts; python_version >= '3.13'",
-    # Indic Parler needs the compiled reader; `all` is what the image installs,
-    # and it carried a working Indic Parler before.
+    # Indic Parler needs the compiled reader, and the image installs `all`
     "tokenizers",
-    # test-only reference readers for phoonnx's own pure-Python tokenizer.json
-    # / tokenizer.model readers (phoonnx/_bpe.py, phoonnx/_sentencepiece.py):
-    # the Docker image ships engines (Indic Parler, Pocket TTS) that route
-    # through those readers, so the packages that define the on-disk formats
-    # need to be present at runtime too, not just in the [test] extra.
+    # MOSS-TTS-Nano imports sentencepiece at runtime (phoonnx/engines/mosstts.py)
     "sentencepiece",
     # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
     "safetensors",

@@ -33,21 +33,25 @@ This script sorts the entries of the bundled index by form, and prints the forms
 ...     return "full and int8" if info.variants else "full only"
 >>> forms = Counter(form(info) for info in manager.all_voices)
 >>> sorted(forms)
-['full and int8', 'full only', 'int8 only']
+['full and int8', 'full only']
 
 ```
 
 `forms` holds the number of entries of each form. The entries with an int8 variant are
-Piper voices, the Italian Pocket TTS voices (`pockettts/it/...`), the F5-TTS voices
+Piper voices, the Pocket TTS voices of every language (`pockettts/...`), the F5-TTS voices
 (`f5tts/...`, `habibi/...`, `namaa/ar-sa-v2`, `silma/...`, `openbible/...`) and
-`edwixx/pt-BR-rapido`. The int8-only entries are the English, French, German, Portuguese and
-Spanish Pocket TTS voices:
+`edwixx/pt-BR-rapido`. No bundled entry is int8-only: the int8 Pocket TTS graphs fall back to
+the CPU on a GPU, because ONNX Runtime's CUDA provider does not run their operators, so every
+Pocket TTS voice loads its full graphs unless int8 is asked for:
 
 ```python
 >>> sorted({info.engine.value for info in manager.all_voices if info.variants})
 ['f5tts', 'piper', 'pockettts', 'rapido']
->>> sorted({info.voice_id.split("/")[1] for info in manager.all_voices if info.precision == "int8"})
-['de', 'en', 'es', 'fr', 'pt']
+>>> sorted({info.voice_id.split("/")[1] for info in manager.all_voices
+...         if info.engine.value == "pockettts" and info.variants})
+['de', 'en', 'es', 'fr', 'it', 'pt']
+>>> [info.voice_id for info in manager.all_voices if info.precision == "int8"]
+[]
 
 ```
 
@@ -116,8 +120,7 @@ full on disk: 62 MB
 ```
 
 `disk_size()` counts only the files that are in the cache. The full files are not
-downloaded, so the full size counts only the 62 MB of files that both precisions share. On
-the Hub, the full files of this voice are 446 MB and the int8 files are 171 MB.
+downloaded, so the full size counts only the files that both precisions share.
 
 ## 3. Set the precision once
 
@@ -159,10 +162,10 @@ voice that has them:
 A precision that the voice has no files for raises `PrecisionUnavailable`. It is a `ValueError` and a `VoiceLoadError`:
 
 ```python
->>> manager.voices["pockettts/en/alba"].with_precision("full")
+>>> manager.voices["OpenVoiceOS/phoonnx_oc_miro_unicode"].with_precision("int8")
 Traceback (most recent call last):
   ...
-phoonnx.errors.PrecisionUnavailable: voice 'pockettts/en/alba' has no full files; precision 'auto' or 'int8' loads it
+phoonnx.errors.PrecisionUnavailable: voice 'OpenVoiceOS/phoonnx_oc_miro_unicode' has no int8 files; precision 'auto' or 'full' loads it
 
 ```
 
@@ -184,4 +187,4 @@ The id `edwixx/pt-BR-rapido-int8` loads the int8 files of `edwixx/pt-BR-rapido`.
 
 ---
 
-[Docs index](index.md) · Previous: [CLI reference](cli.md) · Next: [Use phoonnx offline](offline.md)
+[← CLI reference](cli.md) · [Home](index.md) · [Use phoonnx offline →](offline.md)

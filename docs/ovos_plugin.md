@@ -181,6 +181,7 @@ The plugin reads these synthesis options from its config. Each option has an und
 | Precision | `precision` | `auto`, `int8` or `full`, see above |
 | Super-resolution | `super_resolution` | Turn on 48 kHz upscaling, a bool that is off by default |
 | Super-resolution model | `super_resolution_model` | The `audiosronnx` engine name, `novasr` by default |
+| Pace stretch | `stretch_pace` | Make an engine that cannot change its pace (Orpheus, Llasa, Pocket TTS and the other codec language models, and Shami) follow `length_scale` and SSML rate with a time stretch, a bool that is off by default |
 | Chunk | `chunk` | Text per engine call: `sentence` (default), `clause`, `paragraph` or `none` |
 
 [Voice cloning](cloning.md) describes the cloning keys.
@@ -318,4 +319,4 @@ phoonnx-voices list-voices --lang en-US
 
 ---
 
-[Docs index](index.md) · Previous: [Alphabet conversion model](alphabet_model.md) · Next: [Docker TTS server](docker.md)
+[← Alphabet conversion model](alphabet_model.md) · [Home](index.md) · [Docker TTS server →](docker.md)

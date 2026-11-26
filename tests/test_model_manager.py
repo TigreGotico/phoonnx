@@ -699,20 +699,127 @@ class TestExternalDataNames(HubTestCase):
 
 
 class TestLoad(HubTestCase):
-    def test_load_hands_every_artifact_path_to_ttsvoice(self):
+    def test_load_gives_ttsvoice_the_graph_and_the_config_of_the_entry(self):
         self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
-        self.hub.stage(f"{HUB}/config.json", {"sample_rate": 22050})
+        self.hub.stage(f"{HUB}/config.json", {"audio": {"sample_rate": 22050}})
         self.hub.stage(f"{HUB}/tokens.txt", "a\nb\n")
         info = self.make_info(config_url=f"{HUB}/config.json",
                               tokens_url=f"{HUB}/tokens.txt")
         with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
-                patch("phoonnx.model_manager._voice_phonemizer"):
+                patch("phoonnx.model_manager.make_session") as make_session:
             info.load()
-        kwargs = voice_cls.load.call_args.kwargs
+        kwargs = voice_cls.call_args.kwargs
         self.assertEqual(Path(kwargs["model_path"]).read_bytes(), b"onnxdata")
-        self.assertEqual(json.loads(Path(kwargs["config_path"]).read_text()),
-                         {"sample_rate": 22050})
-        self.assertIsNone(kwargs["vocab_path"], "this voice has no vocab.json")
+        self.assertIs(kwargs["session"], make_session.return_value)
+        # a copy of the entry's config, with the entry's tokenizer
+        self.assertIsNot(kwargs["config"], info.config)
+        self.assertIs(kwargs["config"].tokenizer, info.config.tokenizer)
+        self.assertEqual(kwargs["config"].sample_rate, 22050)
+
+    def test_two_loads_of_one_entry_keep_their_own_settings(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/config.json", {"audio": {"sample_rate": 22050}})
+        self.hub.stage(f"{HUB}/tokens.txt", "a\nb\n")
+        info = self.make_info(config_url=f"{HUB}/config.json", tokens_url=f"{HUB}/tokens.txt")
+        with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
+                patch("phoonnx.model_manager.make_session"):
+            info.load(threads=3)
+            first = voice_cls.call_args.kwargs["config"]
+            info.load()
+            second = voice_cls.call_args.kwargs["config"]
+        self.assertEqual(first.engine_params["threads"], 3)
+        self.assertNotIn("threads", second.engine_params)
+        self.assertNotIn("threads", info.config.engine_params)
+
+    def test_a_streaming_config_splits_its_graph(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/config.json", {"audio": {"sample_rate": 22050}, "streaming": True})
+        self.hub.stage(f"{HUB}/tokens.txt", "a\nb\n")
+        info = self.make_info(config_url=f"{HUB}/config.json", tokens_url=f"{HUB}/tokens.txt")
+        with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
+                patch("phoonnx.model_manager.make_session") as make_session, \
+                patch("phoonnx.engines.vits_split.ensure_split_vits",
+                      return_value=("model.encoder.onnx", "model.decoder.onnx")) as split:
+            info.load()
+        self.assertTrue(str(split.call_args.args[0]).endswith("model.onnx"))
+        self.assertEqual(make_session.call_args.args[0], "model.encoder.onnx")
+        self.assertEqual(voice_cls.call_args.kwargs["model_path"], "model.encoder.onnx")
+        self.assertEqual(voice_cls.call_args.kwargs["config"].engine_params["decoder_path"], "model.decoder.onnx")
+
+    def test_a_split_voice_reads_its_encoder_through_the_streaming_adapter(self):
+        from phoonnx.engines.vits import VitsAdapter
+        from phoonnx.engines.vits_streaming import VitsStreamingAdapter
+        for engine in (None, "vits", "piper"):
+            with self.subTest(engine=engine):
+                config = {"phoneme_type": "unicode", "alphabet": "unicode", "audio": {"sample_rate": 22050},
+                          "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3]}, "streaming": True}
+                if engine:
+                    config["engine"] = engine
+                self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+                self.hub.stage(f"{HUB}/config.json", config)
+                info = self.make_info(config_url=f"{HUB}/config.json", **({"engine": engine} if engine else {}))
+                with patch("phoonnx.model_manager.make_session", return_value=MagicMock()), \
+                        patch("phoonnx.engines.vits_streaming.VitsStreamingAdapter.configure_from_params"), \
+                        patch("phoonnx.engines.vits_split.ensure_split_vits",
+                              return_value=("model.encoder.onnx", "model.decoder.onnx")):
+                    voice = info.load()
+                self.assertIsInstance(voice.adapter, VitsStreamingAdapter)
+                self.assertEqual(voice.model_path, "model.encoder.onnx")
+        # a config that does not stream keeps the one-graph adapter
+        self.hub.stage(f"{HUB}/config.json", {**config, "streaming": False})
+        info = self.make_info(engine="vits", config_url=f"{HUB}/config.json")
+        with patch("phoonnx.model_manager.make_session", return_value=MagicMock()):
+            voice = info.load()
+        self.assertIs(type(voice.adapter), VitsAdapter)
+
+    def test_a_decoder_graph_is_found_beside_its_config(self):
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/config.json", {"audio": {"sample_rate": 22050},
+                                              "engine_params": {"decoder_path": "decoder.onnx"}})
+        self.hub.stage(f"{HUB}/tokens.txt", "a\nb\n")
+        info = self.make_info(config_url=f"{HUB}/config.json", tokens_url=f"{HUB}/tokens.txt")
+        with patch("phoonnx.model_manager.TTSVoice") as voice_cls, \
+                patch("phoonnx.model_manager.make_session"):
+            info.load()
+        decoder = voice_cls.call_args.kwargs["config"].engine_params["decoder_path"]
+        self.assertEqual(Path(decoder), info.hub_path(info.config_url).parent / "decoder.onnx")
+
+    def test_a_vocabulary_larger_than_the_embedding_is_refused(self):
+        from phoonnx.errors import VoiceLoadError
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/config.json", {
+            "phoneme_type": "unicode", "alphabet": "unicode", "audio": {"sample_rate": 22050},
+            "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3], "b": [4]}, "num_symbols": 4})
+        info = self.make_info(engine="piper", config_url=f"{HUB}/config.json")
+        with patch("phoonnx.model_manager.make_session", return_value=MagicMock()), \
+                patch("phoonnx.voice.make_session", return_value=MagicMock()), \
+                self.assertRaises(VoiceLoadError):
+            info.load()
+
+
+    def test_a_chatterbox_voice_with_a_config_url_reads_its_tokenizer_and_lang_tokens(self):
+        """A native chatterbox config holds no tokenizer; the entry's tokenizer.json and
+        lang_tokens reach the voice as they do for an entry with no config."""
+        bpe = Path(__file__).parent / "fixtures" / "tokenizer_bpe_whitespace.json"
+        self.hub.stage(f"{HUB}/model.onnx", b"onnxdata")
+        self.hub.stage(f"{HUB}/phoonnx.json", {
+            "phoonnx_version": "1.0.0", "engine": "chatterbox", "phoneme_type": "unicode",
+            "alphabet": "unicode", "lang_code": "und", "audio": {"sample_rate": 24000},
+            "num_symbols": 0, "phoneme_id_map": {}})
+        self.hub.stage(f"{HUB}/tokenizer.json", json.loads(bpe.read_text()))
+        info = self.make_info(engine="chatterbox", lang="ar-EG", phoneme_type="unicode",
+                              alphabet="unicode", config_url=f"{HUB}/phoonnx.json",
+                              tokenizer_config_url=f"{HUB}/tokenizer.json",
+                              lang_tokens={"ar-EG": "eg"})
+        with patch("phoonnx.model_manager.make_session"), patch("phoonnx.voice.make_session"), \
+                patch("phoonnx.engines.chatterbox.ChatterboxAdapter.configure"):
+            voice = info.load()
+        self.assertEqual(type(voice.adapter).__name__, "ChatterboxAdapter")
+        self.assertEqual(voice.config.lang_tokens, {"ar-EG": "eg"})
+        self.assertTrue(voice.config.add_diacritics)
+        from phoonnx.tokenizer import load_chatterbox_tokenizer
+        self.assertEqual(voice.config.tokenizer.encode("a b"),
+                         load_chatterbox_tokenizer(str(bpe)).encode("a b"))
 
 
 class TestEngineParams(HubTestCase):
@@ -833,7 +940,8 @@ class TestLoadProviders(HubTestCase):
         fake_voice = MagicMock()
         mock_ttsvoice_cls.return_value = fake_voice
         first_result = info.load(providers=first_requested)
-        self.assertEqual(fake_config.engine_params["providers"], first_resolved)
+        first_config = mock_ttsvoice_cls.call_args.kwargs["config"]
+        self.assertEqual(first_config.engine_params["providers"], first_resolved)
 
         second_result = info.load(providers=second_requested)
 
@@ -851,8 +959,10 @@ class TestLoadProviders(HubTestCase):
                                    providers=second_resolved, threads=None),
             ],
         )
-        self.assertEqual(fake_config.engine_params["providers"],
+        # each load gives its voice its own config
+        self.assertEqual(mock_ttsvoice_cls.call_args.kwargs["config"].engine_params["providers"],
                          second_resolved)
+        self.assertEqual(first_config.engine_params["providers"], first_resolved)
         self.assertEqual(first_result, fake_voice)
         self.assertEqual(second_result, fake_voice)
 
@@ -878,7 +988,7 @@ class TestLoadProviders(HubTestCase):
         info.load(providers=["CPUExecutionProvider"], threads=2)
         self.assertEqual(mock_make_session.call_args.kwargs["threads"], 2)
         # the auxiliary graphs of the engine read the same count
-        self.assertEqual(fake_config.engine_params["threads"], 2)
+        self.assertEqual(mock_ttsvoice_cls.call_args.kwargs["config"].engine_params["threads"], 2)
 
 
 class TestTTSModelInfoStringEnumCoercion(HubTestCase):

@@ -4,7 +4,7 @@
 covers: how to prepare voices online and then run phoonnx with no network, what works offline and what fails
 source: phoonnx/model_manager.py:_hf_fetch, phoonnx/model_manager.py:_offline_snapshot, phoonnx/model_manager.py:_voice_snapshot, phoonnx/model_manager.py:TTSModelManager.merge_default_voices, phoonnx/cli.py:download_voice, phoonnx/opm.py:PhoonnxTTSPlugin.get_tts
 generated: no
-verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/: [0-9]+$/: .../') <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/offline.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_CACHE=.venv/verify-empty-hub HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices download piper/en_US-danny-low 2>&1) <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices download piper\/en_US-danny-low$/,/^\x60\x60\x60$/{//!p}' docs/offline.md)
+verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/: [0-9]+$/: .../') <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/offline.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_CACHE=.venv/verify-empty-hub HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices download piper/en_US-danny-low 2>&1 | grep -v 'W:onnxruntime') <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices download piper\/en_US-danny-low$/,/^\x60\x60\x60$/{//!p}' docs/offline.md)
 see: quickstart.md, deployment.md, voice_manager.md, docker.md
 -->
 
@@ -21,7 +21,7 @@ $ phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_unicode
 Attempting to download files for: OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 -> Downloading ONNX model and side files (this may take a while)...
 
-Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--phoonnx_pt-PT_miro_unicode/snapshots/eb9a020da900534d7232f11a6cf5d1ae1c545219
+Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--phoonnx_pt-PT_miro_unicode/snapshots/aec14a0428e6b67a47eb54b2baa4a604d42c0063
 ```
 
 The files go into the Hugging Face hub cache, `~/.cache/huggingface/hub/` by default. Set `HF_HOME` or `HF_HUB_CACHE` to put the cache somewhere else. Use the same value online and offline.
@@ -78,10 +78,10 @@ print(plugin.get_tts("Olá, isto é um teste.", "offline.wav", voice=config["voi
 
 ## What fails offline
 
-A voice that is not in the cache cannot load. Python stops with this error:
+A voice that is not in the cache cannot load. The error names the missing file, its repository and the pinned commit. Python stops with this error:
 
 ```
-huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+huggingface_hub.errors.LocalEntryNotFoundError: model.onnx of Phoonnx/vits-en_us-danny-low-espeak at commit aeaf5a3ab43f6d25a6798581793de0b97818e3ab is not in the hub cache, and the hub cannot be reached. Connect once so that phoonnx can download it. After a phoonnx upgrade, the voice index can name a file that no cached snapshot holds.
 ```
 
 The download command gives the same error and exits with status 1:
@@ -90,7 +90,7 @@ The download command gives the same error and exits with status 1:
 $ HF_HUB_OFFLINE=1 phoonnx-voices download piper/en_US-danny-low
 Attempting to download files for: piper/en_US-danny-low (en-US)
 -> Downloading ONNX model and side files (this may take a while)...
-An unexpected error occurred during download: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+An unexpected error occurred during download: model.onnx of Phoonnx/vits-en_us-danny-low-espeak at commit aeaf5a3ab43f6d25a6798581793de0b97818e3ab is not in the hub cache, and the hub cannot be reached. Connect once so that phoonnx can download it. After a phoonnx upgrade, the voice index can name a file that no cached snapshot holds.
 ```
 
 Fix: connect the machine, download the voice, and go offline again.
@@ -109,8 +109,10 @@ A later phoonnx release can pin a later commit of the same voice. Online, phoonn
 
 All files of one voice come from the same snapshot, so a model and its config always match. When the pinned snapshot holds only part of the files, as after an interrupted download, phoonnx does not mix commits. The load fails, and a download while online repairs it.
 
+A later release can also name a file that no cached snapshot holds, for example the native `phoonnx.json` config of a voice. Offline, that voice then fails with the error of the previous section, which names the file. So after an upgrade, load each voice once while online. A download while online fetches only the files that changed.
+
 For servers and containers, [Deployment](deployment.md) shows how to keep the cache on a volume and prefetch voices before the server starts.
 
 ---
 
-[Docs index](index.md) · Previous: [Precision variants](precision.md) · Next: [Pocket TTS](pockettts.md)
+[← Precision variants](precision.md) · [Home](index.md) · [Pocket TTS →](pockettts.md)

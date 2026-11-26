@@ -173,6 +173,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 
 class MossTTSNanoAdapter(BaseOnnxAdapter):
     """Adapter for MOSS-TTS-Nano (autoregressive RVQ codec-LM, zero-shot cloning)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     #: hard ceiling on the AR loop, ~30 s of audio at 12.5 frames/s
     MAX_NEW_FRAMES = 375

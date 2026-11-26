@@ -220,6 +220,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     takes_symbols = True
 
@@ -344,9 +345,8 @@ class NeuTTSAdapter(BaseOnnxAdapter):
         name = None
         if syn_config is not None:
             name = syn_config.extra.get("voice")
-        cfg = getattr(voice, "config", None)
         if not name:
-            name = (getattr(cfg, "engine_params", None) or {}).get("voice")
+            name = voice.config.engine_params.get("voice")
         if not name:
             name = self.default_preset
         if not name:

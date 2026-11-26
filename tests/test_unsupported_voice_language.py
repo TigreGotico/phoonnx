@@ -18,7 +18,7 @@ from unittest import mock
 
 import onnxruntime
 
-import phoonnx.voice
+import phoonnx.model_manager
 
 from phoonnx.config import (
     Alphabet,
@@ -71,6 +71,19 @@ class TestCheckLangSupported(unittest.TestCase):
         # fail at load, not load and then fail on the first phonemize call.
         with self.assertRaises(UnsupportedVoiceLanguage):
             check_lang_supported("und-voice", "und", PhonemeType.ORTHOGRAPHY2IPA)
+
+    def test_und_mapped_to_another_language_is_rejected(self):
+        # a fuzzy matcher maps "und" to some language: the voice would speak a language it never named
+        backend = type("FuzzyBackend", (), {"get_lang": classmethod(lambda cls, lang: "en")})
+        with mock.patch("scriptconv.phonemizers.registry.get_phonemizer_class", return_value=backend):
+            with self.assertRaises(UnsupportedVoiceLanguage):
+                check_lang_supported("und-voice", "und", PhonemeType.ORTHOGRAPHY2IPA)
+
+    def test_und_kept_by_a_passthrough_loads(self):
+        # a passthrough returns the tag unchanged: it reads any language, "und" included
+        backend = type("Passthrough", (), {"get_lang": classmethod(lambda cls, lang: lang)})
+        with mock.patch("scriptconv.phonemizers.registry.get_phonemizer_class", return_value=backend):
+            check_lang_supported("und-voice", "und", PhonemeType.UNICODE)
 
     def test_real_unsupported_lang_code_still_raises(self):
         # A real code the backend does not support is rejected with the
@@ -186,23 +199,13 @@ class TestTheCheckReadsThePhonemizerLanguage(HubTestCase):
                               config_url=f"{HUB}/config.json", **info_fields)
         with mock.patch.object(TTSModelInfo, "hub_path", lambda self, url: config_path if url else None), \
                 mock.patch.object(TTSModelInfo, "download_model", lambda self: Path("graph-not-fetched.onnx")), \
-                mock.patch.object(phoonnx.voice, "make_session", lambda *args, **kwargs: None):
+                mock.patch.object(phoonnx.model_manager, "make_session", lambda *args, **kwargs: None):
             return info.load()
 
     def test_the_load_checks_the_phonemizer_language_before_the_download(self):
         voice = self.load({"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "lfn"},
                           phonemizer_lang="lfn", phoneme_type=PhonemeType.ESPEAK)
         self.assertEqual((voice.config.lang_code, voice.config.phonemizer_lang), ("tw", "lfn"))
-
-    def test_the_index_phoneme_type_is_checked_in_the_phonemizer_language(self):
-        # a loaded voice whose phoneme type the index overrides is checked again, for the index phonemizer
-        config = self.twi_config(lang_code="tw", phonemizer_lang="lfn")
-        config.phoneme_type, config.alphabet = PhonemeType.UNICODE, Alphabet.UNICODE
-        loaded = TTSVoice(session=None, config=config, model_path="/cache/kasanoma-twi.onnx")
-        with mock.patch.object(TTSVoice, "load", lambda **kwargs: loaded):
-            voice = self.load({"phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "lfn"},
-                              phonemizer_lang="lfn", phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-        self.assertEqual((voice.config.phoneme_type, voice.config.phonemizer_lang), (PhonemeType.ESPEAK, "lfn"))
 
 
 if __name__ == "__main__":

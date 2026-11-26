@@ -456,6 +456,14 @@ class AudioPost:
     voice_conversion_engine: Optional[str] = None
     """The ``voiceclonnx`` engine. ``None`` selects ``"openvoice"``."""
 
+    stretch_pace: bool = False
+    """Stretch the audio of an engine that cannot change its pace (a codec language model
+    such as Orpheus, or a graph with its speed baked in) to the pace the call asks for: the
+    call's ``length_scale``, an SSML ``<prosody rate>`` or ``<emphasis>``, against the voice's
+    own length scale. A WSOLA time stretch keeps the pitch and stays within 0.5x and 2x. It
+    does nothing for an engine that changes its pace itself. :meth:`TTSVoice.stream` then
+    yields each sentence as one chunk."""
+
 
 # The 1.x name of each setting, and the path of its new home.
 _1X_NAMES = {
@@ -537,12 +545,15 @@ class SynthesisConfig:
 
     speaker: Optional[Union[int, str]] = None
     """The speaker of a multi-speaker voice: an id, or a name in the voice's
-    ``speaker_id_map``. A name that the map lacks goes to the engine, which may hold
-    its own names (Magpie). ``None`` takes the voice's own speaker, or speaker 0."""
+    ``speaker_id_map``. A name that the map lacks goes to an engine with names of its
+    own (Magpie, Orpheus); any other engine gets a ``ValueError`` that lists the names
+    of the voice. ``None`` takes the voice's own speaker, or speaker 0."""
 
     language: Optional[Union[int, str]] = None
     """The language of a multi-language voice: an id, or a code in the voice's
-    ``lang_id_map``. A code also sets ``stages.lang`` when that is ``None``."""
+    ``lang_id_map``. A code that the map of a multilingual voice lacks gives a
+    ``ValueError`` that lists the codes of the voice. A code also sets ``stages.lang``
+    when that is ``None``."""
 
     length_scale: Optional[float] = None
     """The phoneme length scale (< 1 is faster, > 1 is slower)."""
@@ -629,7 +640,9 @@ class SynthesisConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         """The config as plain data, which :meth:`from_dict` reads back and
-        ``phoonnx/synthesis_config.schema.json`` describes.
+        ``phoonnx/synthesis_config.schema.json`` describes. A 1.x ``speaker_id`` or
+        ``lang_id`` string is written under its 1.x key, so that it reaches the engine
+        as it is after :meth:`from_dict` too.
 
         Raises:
             ValueError: If ``stages.casing`` is set, or a reference holds samples
@@ -654,6 +667,9 @@ class SynthesisConfig:
         data["extra"] = dict(self.extra)
         if self.input_alphabet is not None:
             data["input_alphabet"] = self.input_alphabet.value
+        for field_name, name_1x in (("speaker", "speaker_id"), ("language", "lang_id")):
+            if isinstance(data[field_name], _LegacyId):
+                data[name_1x] = str(data.pop(field_name))
         return data
 
 
@@ -670,10 +686,9 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
     others (euskaphone, arbtok) import their optional backing package to
     check. A missing optional package therefore surfaces as ``ImportError``
     here, not ``ValueError`` -- that is not an unsupported-language verdict,
-    so it is treated the same as "no get_lang": skip, don't reject. Backends
-    without ``get_lang`` (grapheme/unicode passthroughs) accept any language
-    and are silently skipped, as are unresolvable phoneme types
-    (``get_phonemizer`` raises its own error for those).
+    so it is skipped, not rejected. A grapheme or unicode passthrough returns
+    the tag unchanged, so it accepts any language. Unresolvable phoneme types
+    are skipped (``get_phonemizer`` raises its own error for those).
 
     Raises:
         UnsupportedVoiceLanguage: If the resolved backend cannot serve
@@ -686,18 +701,15 @@ def check_lang_supported(voice: str, lang_code: Optional[str],
         phonemizer_cls = get_phonemizer_class(phoneme_type)
     except (KeyError, ImportError, ValueError):
         return
-    get_lang = getattr(phonemizer_cls, "get_lang", None)
-    if get_lang is None:
-        return
-    # "und" names no language; a fuzzy matcher can still map it to some spec
-    if lang_code.split("-")[0].lower() == "und":
-        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
     try:
-        get_lang(lang_code)
+        resolved = phonemizer_cls.get_lang(lang_code)
     except ImportError:
         return
     except ValueError as e:
         raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type) from e
+    # "und" names no language: a passthrough keeps it, but a fuzzy matcher maps it to some language
+    if lang_code.split("-")[0].lower() == "und" and resolved != lang_code:
+        raise UnsupportedVoiceLanguage(voice, lang_code, phoneme_type)
 
 
 def _removal_version() -> str:

@@ -403,12 +403,14 @@ class ExportTests(unittest.TestCase):
 
             from phoonnx.config import VoiceConfig
 
+            # training tokenizes with the TextProcessor of the model, so the voice
+            # config takes its table, not the phoneme map of the dataset config
             written = json.loads((onnx_path.parent / "model.json").read_text(encoding="utf-8"))
             loaded = VoiceConfig.from_dict(written)
-            self.assertEqual(loaded.phoneme_type.value, "gruut")
+            self.assertEqual(loaded.phoneme_type.value, "espeak")
             self.assertEqual(loaded.alphabet.value, "ipa")
-            self.assertIs(loaded.keep_punctuation, True)
-            self.assertEqual(loaded.phonemizer_identity, training_config["phonemizer_identity"])
+            self.assertEqual(written["phoneme_id_map"], model.text_processor.tokenizer.input_symbols)
+            self.assertIsNone(loaded.phonemizer_identity)
 
             sess = ort.InferenceSession(str(onnx_path))
             input_names = {i.name for i in sess.get_inputs()}

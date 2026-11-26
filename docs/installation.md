@@ -86,7 +86,7 @@ $ phoonnx-voices list-voices --verbose | grep -A4 'ID:          OpenVoiceOS/phoo
   Language:    pt-PT
   Engine:      phoonnx
   Phoneme Type: Phonemizer.TUGAPHONE
-  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.onnx
+  Model URL:   https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/ddaeacc8fdb74ceed69eb9f8c3b9571c8327d6b9/miro_pt-PT.onnx
 ```
 
 [Choose a voice](choose_voice.md#2-read-what-the-voice-needs) maps each phoneme type to its extra.
@@ -316,7 +316,7 @@ or with no connection to the Hugging Face Hub, a voice that is not in the local 
 load:
 
 ```
-huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+huggingface_hub.errors.LocalEntryNotFoundError: model.onnx of Phoonnx/vits-en_us-danny-low-espeak at commit aeaf5a3ab43f6d25a6798581793de0b97818e3ab is not in the hub cache, and the hub cannot be reached. Connect once so that phoonnx can download it. After a phoonnx upgrade, the voice index can name a file that no cached snapshot holds.
 ```
 
 Fix: run `phoonnx-voices download <voice_id>` while the machine is online. After that, the
@@ -324,4 +324,4 @@ voice loads offline. See [Use phoonnx offline](offline.md).
 
 ---
 
-[Docs index](index.md) · Previous: [Docs index](index.md) · Next: [Quickstart](quickstart.md)
+[Home](index.md) · [Quickstart →](quickstart.md)

@@ -161,4 +161,4 @@ The model has a ConvNeXt text encoder with scaled sinusoidal positional embeddin
 
 ---
 
-[Docs index](../../index.md) · Previous: [Mixer-TTS](mixertts.md) · Next: [FastPitch](fastpitch.md)
+[← Mixer-TTS](mixertts.md) · [Home](../../index.md) · [FastPitch →](fastpitch.md)

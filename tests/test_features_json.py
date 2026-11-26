@@ -425,6 +425,18 @@ def test_tone_mark_on_a_syllabic_consonant(tmp_path):
     assert (prosody, tone) == (NO_PROSODY, [1, 0.5, 0.5, 0.5])
 
 
+def test_syllabic_mark_above_a_descender_bears_the_tone(tmp_path):
+    # Cantonese writes the syllabic mark above the descender of ŋ (U+030D)
+    above, below = "\u014b\u030d\u02e9\u02e7", "\u014b\u0329\u02e9\u02e7"
+    result, table = run(tmp_path, {**TINY_MAP, above: [4], below: [5]}, "phonematcher")
+    assert result.exit_code == 0, result.output
+    assert parts(table, "4") == parts(table, "5")
+    phone, prosody, tone = parts(table, "4")
+    assert phone == base_features("phonematcher", "\u014b\u0329")
+    # Chao ˩ is -1 and ˧ is 0, so the rise has its mid at -0.5
+    assert (prosody, tone) == (NO_PROSODY, [1, -1, -0.5, 0])
+
+
 def test_bar_reason_says_null_by_default(tmp_path):
     result, table = run(tmp_path, {**TINY_MAP, "|": [4]}, "phonematcher")
     assert result.exit_code == 0, result.output

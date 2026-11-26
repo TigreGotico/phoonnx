@@ -57,6 +57,9 @@ ROWS = {
     "coqui/bg-cv-vits": [
         "Здравей, свят. Това е тест.",
     ],
+    "OpenVoiceOS/pipertts_de-DE_miro": [
+        "Ich möchte Milch.",
+    ],
 }
 
 

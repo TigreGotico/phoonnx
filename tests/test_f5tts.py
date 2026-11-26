@@ -788,7 +788,7 @@ _UPSTREAM_TEXT_FUNCTION = {
 
 @pytest.mark.parametrize("voice_id", sorted(_UPSTREAM_TEXT_FUNCTION))
 def test_entry_selects_the_text_function_of_its_upstream_code(voice_id):
-    """TTSModelInfo.load gives the voice the entry's phoneme_type over the config's."""
+    """The entry lists the text function of the voice's upstream code."""
     assert _f5_index()[voice_id]["phoneme_type"] == _UPSTREAM_TEXT_FUNCTION[voice_id]
 
 
@@ -840,18 +840,17 @@ def test_base_install_brings_the_pinyin_text_function_dependencies():
     assert {"rjieba", "pypinyin"} <= base
 
 
-def test_base_entry_reads_hanzi_as_pinyin_over_a_graphemes_config():
-    """The config on the Hub says graphemes, which reads every hanzi as id 0.
-    The entry's phoneme_type wins, as in TTSModelInfo.load, so the voice reads
-    the pinyin ids of convert_char_to_pinyin (SWivid/F5-TTS 600e5fd) through
-    the F5-TTS v1 Base vocab.txt ids, recorded with the upstream code."""
+def test_base_entry_reads_hanzi_as_pinyin():
+    """The pinned config of the entry says f5tts_pinyin, so the voice reads the
+    pinyin ids of convert_char_to_pinyin (SWivid/F5-TTS 600e5fd) through the
+    F5-TTS v1 Base vocab.txt ids, recorded with the upstream code."""
     from phoonnx.model_manager import TTSModelInfo
     from phoonnx.voice import TTSVoice
 
     vocab = {" ": 0, "wo3": 1178, "zuo2": 1410, "tian1": 1108, "mai3": 711, "le": 634, "yi1": 1259,
              "yi4": 1262, "tai2": 1088, "xin1": 1208, "dian4": 289, "nao3": 783}
     info = TTSModelInfo(**_f5_index()["f5tts/v1-base"])
-    info.download_config = lambda: {"engine": "f5tts", "phoneme_type": "graphemes", "alphabet": "unicode",
+    info.download_config = lambda: {"engine": "f5tts", "phoneme_type": "f5tts_pinyin", "alphabet": "unicode",
                                     "lang_code": "zh", "phoneme_id_map": vocab, "fold_compounds": False,
                                     "add_blank_char": False, "blank_at_start": False, "blank_at_end": False,
                                     "use_eos_bos": False}

@@ -127,4 +127,4 @@ The mirror is Apache-2.0, the licence of the upstream checkpoint.
 
 ---
 
-[Docs index](../../index.md) · Previous: [Rápido](rapido.md) · Next: [Architecture](../../architecture.md)
+[← Rápido](rapido.md) · [Home](../../index.md) · [Architecture →](../../architecture.md)

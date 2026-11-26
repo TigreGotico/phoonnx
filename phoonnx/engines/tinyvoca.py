@@ -32,7 +32,8 @@ Durations come back for the request's tokens. The frames of an added full
 stop go to ``<eos>``. A cut sentence returns no durations.
 """
 from dataclasses import replace
-from typing import Any, Dict, List, Optional, Tuple
+import math
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
 import onnxruntime
@@ -137,6 +138,22 @@ class TinyVocaAdapter(BaseOnnxAdapter):
 
     def default_params(self) -> Dict[str, float]:
         return {"length_scale": 1.0, "pitch_shift": 0.0, "pitch_range": 1.0}
+
+    def pitch_shift_params(self, semitones: float, params: Mapping[str, Any],
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
+        """``pitch_shift`` is added to the natural log of F0, so a semitone is ln(2) / 12."""
+        inputs = self._graph_inputs(session)
+        if inputs is not None and "pitch_shift" not in inputs:
+            return {}
+        return {"pitch_shift": float(params.get("pitch_shift", 0.0)) + semitones * math.log(2) / 12}
+
+    def pitch_range_params(self, pitch_range: float, params: Mapping[str, Any],
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
+        """``pitch_range`` scales the pitch movement around its mean: the SSML range itself."""
+        inputs = self._graph_inputs(session)
+        if inputs is not None and "pitch_range" not in inputs:
+            return {}
+        return {"pitch_range": float(params.get("pitch_range", 1.0)) * pitch_range}
 
     @staticmethod
     def detect(

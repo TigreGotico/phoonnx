@@ -361,6 +361,10 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
         self.assertIs(cfg.audio.super_resolution, False)
         self.assertIsNone(cfg.audio.super_resolution_model)
 
+    def test_stretch_pace_is_off_unless_the_config_turns_it_on(self):
+        self.assertIs(self._synthesize().audio.stretch_pace, False)
+        self.assertIs(self._synthesize({"stretch_pace": True}).audio.stretch_pace, True)
+
     def test_mycroft_conf_block_reaches_synthesis_config(self):
         """Exactly the keys a user would write under
         ``tts/ovos-tts-plugin-phoonnx`` in mycroft.conf."""

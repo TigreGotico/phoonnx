@@ -23,7 +23,7 @@ text ──[acoustic model]──▶ mel ──[vocoder]──▶ waveform
 ```python
 >>> from phoonnx.engines.vocoders import list_vocoders
 >>> list_vocoders()
-['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'raw']
+['griffinlim', 'wavenext', 'hifigan', 'melgan', 'vocos', 'alvocat', 'raw']
 
 ```
 
@@ -42,7 +42,7 @@ Griffin-Lim needs no model file. Its parameters come from the config:
 
 Griffin-Lim imports `librosa` when it runs. The `train` and `all` extras install it.
 
-When `vocoder_type` names a registered type, `build_vocoder` uses it. With no type, or an unknown one, it opens the ONNX file and asks each vocoder type in turn if the file matches. When no type matches, it logs a warning and uses Vocos.
+When `vocoder_type` names a registered type, `build_vocoder` uses it. An unknown type stops with a `ValueError` that names the type and lists the known types. With no type, `build_vocoder` opens the ONNX file and asks each vocoder type in turn if the file matches. When no type matches, it logs a warning and uses Vocos.
 
 ## How a voice selects its vocoder
 
@@ -126,6 +126,7 @@ Make a subclass of `BaseVocoder`, write its `mel_to_audio` method, and register 
 | `hifigan` | `HiFiGANVocoder` | waveform (1) | 31 | GAN vocoder |
 | `melgan` | `HiFiGANVocoder` | waveform (1) | 32 | MelGAN and multiband MelGAN, with the same mel to audio contract |
 | `vocos` | `VocosVocoder` | magnitude, real, imaginary (3) | 40 | inverse STFT, honours `denoise` |
+| `alvocat` | `VocosVocoder` | magnitude, real, imaginary (3) | 41 | another name for `vocos`, for the alVoCat Catalan release |
 | `raw` | `RawWaveformVocoder` | waveform (1) | 50 | any vocoder with one waveform output |
 | `griffinlim` | `GriffinLimVocoder` | no model | 99 | parametric, never auto-detected, needs `librosa` |
 
@@ -133,4 +134,4 @@ The neural vocoders of the bundled index live in their own Hugging Face reposito
 
 ---
 
-[Docs index](index.md) · Previous: [Engine architecture](engines.md) · Next: [Python API](api.md)
+[← Engine architecture](engines.md) · [Home](index.md) · [Python API →](api.md)

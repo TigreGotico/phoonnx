@@ -111,6 +111,17 @@ class TestOfflineFallback(_Cache):
         with self.assertRaises(LocalEntryNotFoundError):
             _hf_fetch(url("config.json"))
 
+    def test_a_file_no_snapshot_holds_is_named_in_the_error(self):
+        """After an upgrade the index can name a file, such as phoonnx.json, that the
+        device never cached. The error names the file, the repo and the commit."""
+        self.snapshot(OLD, {"config.json": b"old"}, mtime=1000, main=True)
+        with self.assertRaises(LocalEntryNotFoundError) as caught:
+            _hf_fetch(url("phoonnx.json"))
+        self.assertEqual(str(caught.exception),
+                         f"phoonnx.json of {REPO} at commit {NEW} is not in the hub cache, and the hub "
+                         f"cannot be reached. Connect once so that phoonnx can download it. After a "
+                         f"phoonnx upgrade, the voice index can name a file that no cached snapshot holds.")
+
     def test_an_old_repo_id_cache_falls_back_too(self):
         self.snapshot(OLD, {"config.json": b"old"}, mtime=1000, repo="OpenVoiceOS/a-repo", main=True)
         path = _hf_fetch(url("config.json"))

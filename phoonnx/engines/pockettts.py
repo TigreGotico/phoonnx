@@ -137,6 +137,7 @@ def find_boundary_indices(tokens: List[int], boundary_tokens: set) -> List[int]:
 
 class PocketTTSAdapter(BaseOnnxAdapter):
     """Adapter for Kyutai Pocket TTS (five ONNX graphs, explicit stream state)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     MEMOIZED_WRITES = {
         # Every one of these comes out of the model's own metadata blob.

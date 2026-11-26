@@ -241,6 +241,7 @@ def roll_cache(outputs: Dict[str, np.ndarray], layers: int) -> Dict[str, np.ndar
 
 class Qwen3TTSAdapter(BaseOnnxAdapter):
     """Adapter for Qwen3-TTS (talker + code predictor + 12.5 Hz codec decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     def __init__(self):
         self.text_embed: Optional[onnxruntime.InferenceSession] = None
@@ -294,7 +295,7 @@ class Qwen3TTSAdapter(BaseOnnxAdapter):
                              f"known speakers: {sorted(SPEAKER_IDS)}")
         self.speaker = speaker
         self.language = resolve_language_name(
-            ep.get("language") or getattr(voice_config, "lang_code", None))
+            ep.get("language") or voice_config.lang_code)
 
     # ------------------------------------------------------------------
     # Text

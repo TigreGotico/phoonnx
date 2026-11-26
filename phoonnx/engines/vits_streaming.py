@@ -79,6 +79,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
     overridden to run the discard-and-stitch chunk loop instead of a single
     ``session.run``.
     """
+    VITS_GRAPH = True
 
     MEMOIZED_WRITES = {
         # Samples per latent frame, measured once from the decoder itself.
@@ -99,9 +100,8 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
         """Load the decoder graph and streaming parameters from the voice config."""
         engine_params = voice_config.engine_params
         self.configure_from_params(engine_params)
-        hop = getattr(voice_config, "hop_length", None)
-        if hop:
-            self._hop_length = int(hop)
+        if voice_config.hop_length:
+            self._hop_length = int(voice_config.hop_length)
 
     def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
         self._engine_params = engine_params or {}

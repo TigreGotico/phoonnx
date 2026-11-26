@@ -48,6 +48,18 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
     def default_params(self) -> Dict[str, float]:
         return {"speed": 1.0, "num_step": float(self.num_step), "guidance_scale": self.guidance_scale}
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        """ZipVoice's ``speed`` for a VITS-style ``length_scale``.
+
+        The text encoder divides the generated length by ``speed``, so it is a rate: twice
+        as slow is half the speed. Without this, ``<prosody rate>``, the pace of
+        ``<emphasis>`` and a ``length_scale`` in a call or in the voice config never reached
+        the model. A ``speed`` in a call's ``extra`` wins. A ``speed`` in the voice's
+        ``engine_params`` is the voice's normal pace: a call's rate scales it, the voice
+        config's own ``length_scale`` does not (``TTSVoice``).
+        """
+        return {"speed": 1.0 / length_scale}
+
     def configure(self, voice_config: Any) -> None:
         """Load the auxiliary graphs (mel front end, text encoder) and the Vocos
         vocoder from ``engine_params``; the fm_decoder is the voice's own session."""
@@ -57,9 +69,10 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
             self.text_encoder = sess(ep["text_encoder_path"])
         if self.mel is None and ep.get("mel_path"):
             self.mel = sess(ep["mel_path"])
-        if self.vocoder is None and ep.get("vocoder_path"):
+        # A parametric vocoder such as Griffin-Lim has no model file: vocoder_type alone builds it.
+        if self.vocoder is None and (ep.get("vocoder_path") or ep.get("vocoder_type")):
             from phoonnx.engines.vocoders import build_vocoder
-            self.vocoder = build_vocoder(ep["vocoder_path"], ep.get("vocoder_type", "vocos"), ep)
+            self.vocoder = build_vocoder(ep.get("vocoder_path"), ep.get("vocoder_type", "vocos"), ep)
         if "num_step" in ep:
             self.num_step = int(ep["num_step"])
         if "guidance_scale" in ep:
@@ -76,7 +89,7 @@ class ZipVoiceAdapter(BaseOnnxAdapter):
     def synthesize(self, request: AdapterSynthesisRequest,
                    session: onnxruntime.InferenceSession) -> AdapterSynthesisResult:
         if self.text_encoder is None or self.mel is None or self.vocoder is None:
-            raise RuntimeError("ZipVoice voice missing text_encoder_path / mel_path / vocoder_path")
+            raise RuntimeError("ZipVoice voice missing text_encoder_path / mel_path / vocoder_path or vocoder_type")
         p = request.params
         ref = p.get("reference_audio")
         prompt_tokens = p.get("prompt_tokens")

@@ -8,6 +8,7 @@ import logging
 import os
 import queue
 from collections import Counter
+from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, packages_distributions, version
 from multiprocessing import JoinableQueue, Process, Queue
 from pathlib import Path
@@ -45,6 +46,11 @@ DEFAULT_SPECIAL_PHONEME_ID_MAP: Dict[str, int] = {
     DEFAULT_BLANK_WORD_TOKEN: 3,
 }
 MAX_PHONEMES = 256
+# Path fields of a dataset.jsonl row that hold cache files, such as an engine
+# step's d-vector. audio_path has its own override.
+_CACHE_PATH_FIELDS: Tuple[str, ...] = tuple(
+    field.name for field in dataclasses.fields(Utterance)
+    if field.type == Optional[Path] and field.name != "audio_path")
 # -----------------------------------------------------------------------------
 
 def phonemizer_registry(phonemizer: Any) -> Tuple[str, str]:
@@ -435,7 +441,8 @@ def next_result(result_queue: Queue, task_queue: JoinableQueue,
 @click.option(
     "--jsonl-audio-spec-path",
     default=None,
-    help="Replace the base folder of each audio_norm_path and audio_spec_path in dataset.jsonl: "
+    help="Replace the base folder of each cache path in dataset.jsonl, such as audio_norm_path, "
+         "audio_spec_path and the d_vector_path of --engine yourtts: "
          "the parent of --cache-dir, or --output-dir when --cache-dir is not given. "
          "The rest of each path stays."
 )
@@ -598,7 +605,7 @@ def cli(
         add_diacritics (bool): Instruct the inference settings in the config to add diacritics.
         keep_punctuation (bool): Keep clause punctuation in the phonemes and record it in the config.
         jsonl_audio_path (Optional[str]): Optional base path override for audio paths written into dataset.jsonl.
-        jsonl_audio_spec_path (Optional[str]): Optional base path override for cached audio/spec paths in dataset.jsonl.
+        jsonl_audio_spec_path (Optional[str]): Optional base path override for the cache paths in dataset.jsonl.
         quality_filters (Tuple[str, ...]): Repeatable 'column:min:max' quality-metric filters (e.g. 'utmos:3.0:'),
             applied at manifest-load time before phonemization/audio caching. See phoonnx_train.quality_filter.
         vad_model (str): vadonnx model name used by the 'vad_ratio' quality filter.
@@ -742,6 +749,10 @@ def cli(
                     f"{first_base or 'a base that cannot be read back'}, and the new rows need {audio_base}. "
                     "Write the new rows to another output folder.")
             audio_base = first_base
+        elif not jsonl_audio_path and any(_has_rewritten_audio_path(r) for r in resume_rows):
+            raise click.UsageError(
+                f"--resume would mix two audio bases in {dataset_path}: its rows were written with "
+                "--jsonl-audio-path. Pass the --jsonl-audio-path of the first run again.")
 
     if quality_filters:
         configure_vad_model(vad_model)
@@ -1099,12 +1110,14 @@ def cli(
             # They run after the engine step, which must read the local audio.
             if audio_base is not None and str(utt.audio_path) != ".":
                 utt.audio_path = Path(jsonl_audio_path) / utt.audio_path.absolute().relative_to(audio_base)
-            if jsonl_audio_spec_path and utt.audio_norm_path is not None:
-                utt.audio_norm_path = Path(jsonl_audio_spec_path) / utt.audio_norm_path.relative_to(cache_base)
-                utt.audio_spec_path = Path(jsonl_audio_spec_path) / utt.audio_spec_path.relative_to(cache_base)
+            row = utt.asdict()
+            if jsonl_audio_spec_path:
+                for key in _CACHE_PATH_FIELDS:
+                    if row[key] and Path(row[key]).is_relative_to(cache_base):
+                        row[key] = str(Path(jsonl_audio_spec_path) / Path(row[key]).relative_to(cache_base))
 
             json.dump(
-                utt.asdict(),
+                row,
                 dataset_file,
                 ensure_ascii=False,
                 cls=PathEncoder,
@@ -1212,6 +1225,19 @@ def _written_audio_base(rows: List[Dict[str, Any]], jsonl_audio_path: Path, cach
             if local.parts[-len(tail):] == tail:
                 return Path(*local.parts[:-len(tail)])
     return None
+
+
+def _has_rewritten_audio_path(row: Dict[str, Any]) -> bool:
+    """Whether *row* was written with --jsonl-audio-path.
+
+    A row of an audio file keeps its local path in ``row_id``. A row of embedded
+    audio does not, so it never counts: its decoded file name is the hash of its
+    ``row_id`` under either base.
+    """
+    row_id = row.get("row_id")
+    audio_path = Path(row.get("audio_path") or "")
+    return (bool(row_id) and audio_path != Path("") and audio_path != Path(row_id)
+            and audio_path.name != f"{sha256(row_id.encode('utf-8')).hexdigest()}.wav")
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:

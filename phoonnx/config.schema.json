@@ -28,7 +28,7 @@
       "description": "The phonemizer backend, and the tokenisation recipe that matches it."
     },
     "alphabet": {
-      "enum": ["unicode", "ipa", "arpa", "sampa", "x-sampa", "rfe", "hangul", "kana", "hira", "hepburn", "kunrei", "nihon", "pinyin", "bopomofo", "eraab", "cotovia", "hanzi", "buckwalter", "halabi", "cangjie", "vosk", "graphemes", "africa_g2p"],
+      "enum": ["unicode", "ipa", "arpa", "sampa", "x-sampa", "rfe", "hangul", "kana", "hira", "hepburn", "kunrei", "nihon", "pinyin", "bopomofo", "eraab", "cotovia", "hanzi", "buckwalter", "halabi", "cangjie", "vosk", "graphemes", "africa_g2p", "misaki"],
       "description": "The alphabet of the model's token space."
     },
     "lang_code": {

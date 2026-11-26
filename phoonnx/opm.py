@@ -178,7 +178,7 @@ class PhoonnxTTSPlugin(TTS):
         if isinstance(spk, str):
             if spk.lstrip("-").isdigit():
                 return int(spk)
-            smap = getattr(voice_info.config, "speaker_id_map", None) or {}
+            smap = voice_info.config.speaker_id_map
             if spk in smap:
                 return smap[spk]
             bare = spk.split("/")[-1]
@@ -505,8 +505,7 @@ class PhoonnxTTSPlugin(TTS):
                 speaker=self._resolve_speaker(
                     voice_info, speaker_id if speaker_id is not None else speaker),
                 phonetic_spellings=self._cfg_opt(
-                    voice_info.config.enable_phonetic_spellings
-                    if hasattr(voice_info.config, "enable_phonetic_spellings") else True,
+                    True,
                     "enable_phonetic_spellings", "enable_phonetic_spelling"),
                 stages=Stages(
                     diacritize=self._cfg_opt(
@@ -527,9 +526,12 @@ class PhoonnxTTSPlugin(TTS):
                 # switched on in mycroft.conf. The core TTSVoice loads the engine lazily and
                 # upscales each chunk; synthesize_wav takes the sample rate from the first
                 # chunk, so the WAV header follows.
+                # stretch_pace: an engine that cannot change its pace (Orpheus, Llasa, ...)
+                # follows length_scale and SSML rate by a time stretch; off unless asked for.
                 audio=AudioPost(
                     super_resolution=bool(self._cfg_opt(False, "super_resolution")),
-                    super_resolution_model=self._cfg_opt(None, "super_resolution_model")),
+                    super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
+                    stretch_pace=bool(self._cfg_opt(False, "stretch_pace"))),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it

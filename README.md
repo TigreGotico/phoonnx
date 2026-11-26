@@ -16,9 +16,6 @@ phoonnx turns text into speech with ONNX voices. It loads voices from many ecosy
 native phoonnx, Piper, Mimic 3, Coqui, MMS and Transformers, through one ONNX Runtime
 interface, and it includes a toolkit to train your own voices.
 
-The [documentation index](docs/index.md) lists every page in reading order. To start, follow
-the [Quickstart](docs/quickstart.md).
-
 ## Install
 
 ```bash
@@ -57,103 +54,26 @@ The script writes `hello.wav`. This voice reads text with no phonemizer, so the 
 is sufficient. The [Quickstart](docs/quickstart.md) gives the same steps with the output of
 each command.
 
-## Extras
+## What it does
 
-Many voices need a phonemizer or an engine library that the base install does not include.
-Install the extra that a voice needs, for example `pip install --pre "phoonnx[pt]"` for the
-`tugaphone` voices of European Portuguese. [Choose a voice](docs/choose_voice.md) shows the
-extra of each voice.
-
-| Extras | What they add |
+| Task | Page |
 |---|---|
-| A language code, such as `pt`, `en`, `ar`, `ja` or `zh` | The phonemizers of that language |
-| `espeak`, `o2i` | Phonemizers that serve many languages |
-| `cjk`, `chatterbox-multilingual` | Japanese and Chinese script tools (`pykakasi`, `spacy-pkuseg`) |
-| `streaming`, `matcha`, `pockettts`, `omnivoice`, `indic-parler` | The libraries that one engine or feature needs |
-| `cloning`, `vc`, `audiosr` | Reference-clip cloning, voice conversion and audio super-resolution |
-| `train` and the `train-*` extras | The training toolkit and its optional parts |
-| `all` | Most phonemizers, the engine libraries, cloning, voice conversion and super-resolution. The Docker image installs it. |
+| Install the extra that a voice needs, and set up a GPU runtime | [Installation](docs/installation.md) |
+| Find a voice for a language and download it | [Choose a voice](docs/choose_voice.md), [Voice manager](docs/voice_manager.md) |
+| Synthesize to a file or a stream, on CPU or GPU | [Usage](docs/usage.md), [Streaming](docs/streaming.md) |
+| Run 31 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
+| Clone a speaker from a reference clip | [Cloning](docs/cloning.md) |
+| Speak with no network | [Use phoonnx offline](docs/offline.md) |
+| Train and export your own voice | [Training quickstart](docs/training/quickstart.md) |
+| Use phoonnx as the OpenVoiceOS text-to-speech plugin | [OVOS plugin](docs/ovos_plugin.md) |
+| Run the `ghcr.io/tigregotico/phoonnx:dev` image as an HTTP server | [Docker TTS server](docs/docker.md), [Deployment](docs/deployment.md) |
 
-[Installation](docs/installation.md) describes each extra and the GPU runtimes.
+The [documentation index](docs/index.md) lists every page in reading order.
 
-## Features
+## License
 
-| Capability | Page |
-|---|---|
-| Run ONNX voices on CPU or GPU (CUDA, ROCm, DirectML, CoreML, OpenVINO) | [Usage](docs/usage.md), [Configuration](docs/configuration.md) |
-| Phonemizer backends for many languages, from the scriptconv packages | [Phonemizers](docs/phonemizers.md) |
-| Load Piper, Mimic 3, Coqui, Transformers and MMS voices | [Architecture](docs/architecture.md) |
-| 31 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
-| Zero-shot voice cloning from a reference clip, for example with YourTTS, StyleTTS2, ZipVoice, F5-TTS or Chatterbox | [Cloning](docs/cloning.md) |
-| Low-latency streaming for VITS voices | [Streaming](docs/streaming.md) |
-| Optional 48 kHz audio super-resolution of the synthesized audio | [OVOS plugin](docs/ovos_plugin.md#audio-super-resolution) |
-| Download and cache voices from Hugging Face and other sources | [Voice manager](docs/voice_manager.md) |
-| Smaller int8 files for some large voices | [Precision variants](docs/precision.md) |
-| Speak with no network after you download the voices | [Use phoonnx offline](docs/offline.md) |
-| Train and fine-tune voices | [Training quickstart](docs/training/quickstart.md) |
-| OpenVoiceOS text-to-speech plugin | [OVOS plugin](docs/ovos_plugin.md) |
-
-## Train your own voice
-
-The `phoonnx_train` toolkit preprocesses a single-speaker dataset, trains a VITS model on one
-GPU and exports it to ONNX. phoonnx then loads the result as a voice. The
-[Training quickstart](docs/training/quickstart.md) gives each step.
-
-## OpenVoiceOS plugin
-
-phoonnx includes the `ovos-tts-plugin-phoonnx` text-to-speech plugin. Configure it in
-`mycroft.conf`:
-
-```json
-"tts": {
-  "module": "ovos-tts-plugin-phoonnx",
-  "ovos-tts-plugin-phoonnx": {
-    "voice": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode"
-  }
-}
-```
-
-[OVOS plugin](docs/ovos_plugin.md) lists every option.
-
-## Docker text-to-speech server
-
-From a checkout of this repository, run:
-
-```bash
-docker compose up
-```
-
-The compose file runs the `ghcr.io/tigregotico/phoonnx:dev` image. The `docker.yml` workflow builds
-that image from the `dev` branch. [Docker TTS server](docs/docker.md) describes the image, and
-[Deployment](docs/deployment.md) describes how to run it as a long-lived service.
-
-## Documentation
-
-The [documentation index](docs/index.md) groups the pages by task: start, voices, use,
-configure, deploy, train and reference. Coding agents that work on this repository read
-[AGENTS.md](AGENTS.md).
-
-## Related projects
-
-phoonnx is part of the [OpenVoiceOS](https://github.com/OpenVoiceOS) ecosystem:
-
-- [ovos-core](https://github.com/OpenVoiceOS/ovos-core): the voice assistant that loads this plugin.
-- [ovos-plugin-manager](https://github.com/OpenVoiceOS/ovos-plugin-manager): the plugin framework that `ovos-tts-plugin-phoonnx` registers with.
-- [ovos-tts-server](https://github.com/OpenVoiceOS/ovos-tts-server): an HTTP server for any OVOS text-to-speech plugin, this one included.
-
-## License and credits
-
-phoonnx is licensed under Apache-2.0. Copyright TigreGotico Lda.
-
-phoonnx uses the VITS model of [jaywalnut310/vits](https://github.com/jaywalnut310/vits), and it
-reads the Piper, Mimic 3, Coqui, MMS and Transformers voice formats. The
-[Phonemizers](docs/phonemizers.md) page credits the language components.
-
-The SuperTonic inference code in `phoonnx/engines/supertonic.py` is adapted from the
-MIT-licensed reference implementation of Supertone Inc. The SuperTonic model weights
-(`Supertone/supertonic-3`) have the OpenRAIL license, not Apache-2.0. Read the model license
-before commercial use.
+phoonnx is licensed under Apache-2.0. Copyright TigreGotico Lda. Some model weights have their own license, for example the OpenRAIL license of SuperTonic: see [SuperTonic](docs/training/engines/supertonic.md). The [Phonemizers](docs/phonemizers.md) page credits the language components.
 
 ---
 
-Next: [Docs index](docs/index.md)
+[Home](docs/index.md)

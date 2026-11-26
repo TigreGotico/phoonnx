@@ -71,11 +71,12 @@ A local two-stage voice names its vocoder in the `engine_params` of its `config.
 
 ## Vocoders
 
-`vocoder_type` selects a vocoder from the registry in `phoonnx.engines.vocoders`. The registry has six values. [Vocoders](../../vocoders.md) describes each one.
+`vocoder_type` selects a vocoder from the registry in `phoonnx.engines.vocoders`. The registry has seven values. [Vocoders](../../vocoders.md) describes each one.
 
 | `vocoder_type` | Family | ONNX output | Reconstruction |
 |----------------|--------|-------------|----------------|
 | `vocos` | Vocos, alVoCat | magnitude, real and imaginary STFT (3 tensors) | inverse STFT overlap-add, with optional denoise |
+| `alvocat` | alVoCat, another name for `vocos` | magnitude, real and imaginary STFT (3 tensors) | inverse STFT overlap-add, with optional denoise |
 | `wavenext` | Wavenext | waveform (1 tensor) | none |
 | `hifigan` | HiFi-GAN | waveform (1 tensor) | none |
 | `melgan` | MelGAN, multiband MelGAN | waveform (1 tensor) | none |
@@ -165,4 +166,4 @@ The alVoCat Vocos vocoder (`projecte-aina/alvocat-vocos-22khz`) is for non-comme
 
 ---
 
-[Docs index](../../index.md) · Previous: [Export to ONNX](../export.md) · Next: [GlowTTS](glowtts.md)
+[← Export to ONNX](../export.md) · [Home](../../index.md) · [GlowTTS →](glowtts.md)

@@ -41,7 +41,7 @@ PIPER_TOKENS = {"pad": "_", "blank": "_", "bos": "^", "eos": "$"}
 RAW_TEXT = ("graphemes", "unicode")
 VOCODER_TYPES = ("hifigan", "melgan", "wavenext", "raw", "vocos")
 INSTALL = "onnxruntime numpy huggingface_hub"
-# the keys of a voice index entry that phoonnx writes over the config's own when it loads the voice by its id
+# the text-path keys that phoonnx reads from a voice index entry with no config.json
 INDEX_OVERRIDES = ("phoneme_type", "alphabet", "phonemizer_model")
 TEXT2SPOKEN = "https://github.com/TigreGotico/text2spoken"
 ADDING_A_LANGUAGE = TEXT2SPOKEN + "/blob/dev/docs/adding-a-language.md"
@@ -80,14 +80,14 @@ def standalone_example(config: Dict[str, Any], files: Dict[str, Any], *, repo_id
     - ``dictionary``: for a vosk voice, the pronunciation dictionary that the voice
       index names as ``{"repo", "file"}``, where ``repo`` is left out when the file
       is in the voice's own repo. phoonnx loads it as the phonemizer model when the
-      index names no ``phonemizer_model``.
+      config names no ``phonemizer_model``.
 
     ``text`` is the card's sample sentence, and ``lang`` the phonemizer language when
     the voice index sets one that differs from the config's ``lang_code``.
-    ``overrides`` holds :func:`index_overrides` of the voice index entry, which win
-    over the config's own keys. phoonnx reads the config without them to tell a
-    Piper config from a phoonnx side-car, so the caller passes them here and does
-    not merge them into ``config``.
+    ``overrides`` holds :func:`index_overrides` of the voice index entry: the text
+    path of a voice with no config.json. phoonnx reads the config without them to
+    tell a Piper config from a phoonnx side-car, so the caller passes them here and
+    does not merge them into ``config``.
 
     For an engine in :data:`INDEX_TEMPLATES` (a model of several graphs, a text
     tokenizer or a generation loop), ``config`` is the voice index entry and
@@ -296,7 +296,13 @@ def _bifonia(voice: Dict[str, Any], tag: str, owned: frozenset) -> bool:
 
 
 def index_overrides(entry: Dict[str, Any]) -> Dict[str, str]:
-    """The keys of :data:`INDEX_OVERRIDES` that the voice index *entry* sets: the ``overrides`` of :func:`standalone_example`."""
+    """The ``overrides`` of :func:`standalone_example` for the voice index *entry*.
+
+    A voice with a config.json reads its text path from that file, so only an
+    entry with no ``config_url`` gives the keys of :data:`INDEX_OVERRIDES`.
+    """
+    if entry.get("config_url"):
+        return {}
     return {key: entry[key] for key in INDEX_OVERRIDES if entry.get(key)}
 
 
@@ -352,7 +358,8 @@ def _phoneme_type(config: Dict[str, Any]) -> str:
 
 
 def _keeps_punctuation(config: Dict[str, Any], piper: bool) -> bool:
-    """phoonnx's keep_punctuation for *config*, read before the voice index overrides apply."""
+    """phoonnx's keep_punctuation for *config*: the config's own value, else true for a Piper
+    config that phoonnx did not make, as the config loader reads it."""
     if "keep_punctuation" in config:
         return bool(config["keep_punctuation"])
     # Piper trains with clause punctuation; phoonnx's piper-shaped side-cars do not

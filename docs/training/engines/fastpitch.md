@@ -101,4 +101,4 @@ BSC publishes the 22 kHz Vocos graph of the `vocos` voices twice, with the same 
 
 ---
 
-[Docs index](../../index.md) · Previous: [OptiSpeech](optispeech.md) · Next: [x-vits](xvits.md)
+[← OptiSpeech](optispeech.md) · [Home](../../index.md) · [x-vits →](xvits.md)

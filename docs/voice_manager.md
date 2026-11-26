@@ -77,8 +77,8 @@ download anything:
 
 ```python
 >>> by_source = manager.get_available_voice_ids_by_source()
->>> len(by_source), by_source["ovos"][:2]
-(39, ['OpenVoiceOS/phoonnx_an_dii_unicode', 'OpenVoiceOS/phoonnx_an_miro_unicode'])
+>>> len(by_source), "OpenVoiceOS/phoonnx_an_dii_unicode" in by_source["ovos"]
+(39, True)
 
 ```
 
@@ -174,12 +174,12 @@ files of an index voice:
 ```python
 from phoonnx.model_manager import TTSModelInfo
 
-base = "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/eb9a020da900534d7232f11a6cf5d1ae1c545219"
+base = "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/aec14a0428e6b67a47eb54b2baa4a604d42c0063"
 info = TTSModelInfo(
     voice_id="my-copy-of-miro",
     lang="pt-PT",
     model_url=f"{base}/miro_pt-PT.onnx",
-    config_url=f"{base}/miro_pt-PT.json",
+    config_url=f"{base}/phoonnx.json",
     engine="phoonnx",  # optional override
 )
 
@@ -235,8 +235,8 @@ families. See [Engine architecture](engines.md), [Voice cloning](cloning.md) and
 | `vocab_url` | `str` \| `None` | URL to `vocab.json` (Transformers style) |
 | `tokens_url` | `str` \| `None` | URL to `tokens.txt` (Mimic3/Sherpa style) |
 | `tokenizer_config_url` | `str` \| `None` | Transformers tokenizer config, or the Chatterbox BPE `tokenizer.json` |
-| `phoneme_type` | `PhonemeType` \| `None` | Override for phonemizer type |
-| `alphabet` | `Alphabet` \| `None` | Override for phoneme alphabet |
+| `phoneme_type` | `PhonemeType` \| `None` | Phonemizer type. A voice with a `config_url` reads it from its config, and the index value is for search only. A voice with no config reads it here. |
+| `alphabet` | `Alphabet` \| `None` | Phoneme alphabet. The same rule as `phoneme_type` applies. |
 | `engine` | `Engine` \| `None` | TTS engine the voice was trained with |
 | `vocoder_url` | `str` \| `None` | Separate vocoder ONNX (two-stage engines) |
 | `vocoder_config_url` | `str` \| `None` | Vocoder `vocoder.json` parameters |
@@ -253,4 +253,4 @@ families. See [Engine architecture](engines.md), [Voice cloning](cloning.md) and
 
 ---
 
-[Docs index](index.md) · Previous: [Choose a voice](choose_voice.md) · Next: [CLI reference](cli.md)
+[← Choose a voice](choose_voice.md) · [Home](index.md) · [CLI reference →](cli.md)

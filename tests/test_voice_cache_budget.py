@@ -150,6 +150,34 @@ class TestByteBudget(unittest.TestCase):
         self.assertIn("omni", plugin.voice_cache.voices)
         self.assertLessEqual(plugin.voice_cache.resident_bytes(), 3 * GB)
 
+    def test_a_voice_is_charged_for_the_files_its_load_fetched(self):
+        # A cache that held only part of a voice measures that part before the
+        # load; the load fetches the rest. Pocket TTS after its entries moved to
+        # full-precision graphs: the shared files are cached, the 380 MB of full
+        # graphs are not.
+        on_disk = {"partial": 100 * MB, "other": 400 * MB}
+
+        def fetch(voice_id):
+            if voice_id == "partial":
+                on_disk["partial"] = 400 * MB
+
+        plugin = _plugin(self, sizes=on_disk, load_hook=fetch, max_loaded_bytes="500MB")
+        infos = {}
+        real = plugin.get_voice_info
+
+        def info_for(voice_id):
+            info = infos.setdefault(voice_id, real(voice_id))
+            info.disk_size.side_effect = lambda: on_disk[voice_id]
+            return info
+
+        plugin.get_voice_info = info_for
+        plugin.get_model("partial")
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 400 * MB)
+        plugin.get_model("other")   # 400 + 400 MB does not fit in 500 MB
+        self.assertIn("other", plugin.voice_cache.voices)
+        self.assertNotIn("partial", plugin.voice_cache.voices)
+        self.assertLessEqual(plugin.voice_cache.resident_bytes(), 500 * MB)
+
     def test_two_big_voices_cannot_be_resident_together(self):
         plugin = _plugin(self, sizes={"omniA": 2200 * MB, "omniB": 2200 * MB},
                          max_loaded_bytes="3GB")

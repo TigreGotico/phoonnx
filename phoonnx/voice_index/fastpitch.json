@@ -13,7 +13,21 @@
         "lang": "ar",
         "vocoder_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/model.onnx",
         "vocoder_config_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/vocoder.json",
-        "vocoder_type": "hifigan"
+        "vocoder_type": "hifigan",
+        "engine_options": {
+            "pitch_mean": [
+                130.0,
+                104.6,
+                220.7,
+                207.8
+            ],
+            "pitch_std": [
+                21.5,
+                10.3,
+                34.1,
+                37.1
+            ]
+        }
     },
     "coqui/en-ljspeech-fast_pitch": {
         "voice_id": "coqui/en-ljspeech-fast_pitch",

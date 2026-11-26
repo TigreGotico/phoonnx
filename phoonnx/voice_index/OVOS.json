@@ -1,7 +1,7 @@
 {
     "OpenVoiceOS/phoonnx_oc_miro_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_oc_miro_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_oc_miro_unicode/resolve/b2dec0973e1cf881ad3c04502729cbe27c3b4748/miro_oc.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_oc_miro_unicode/resolve/6cf993f8829467c3ecc32e5c9ffd9efb6b7a945c/miro_oc.onnx",
         "phoneme_type": "unicode",
         "lang": "oc-FR",
         "tokens_url": null,
@@ -10,11 +10,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_oc_miro_unicode/resolve/b2dec0973e1cf881ad3c04502729cbe27c3b4748/miro_oc.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_oc_miro_unicode/resolve/6cf993f8829467c3ecc32e5c9ffd9efb6b7a945c/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_oc_dii_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_oc_dii_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_oc_dii_unicode/resolve/566a7b8912d97767366eac68a29058eb96bef71e/dii_oc.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_oc_dii_unicode/resolve/25372960d5664d0158bc3e445cb942f493cfd113/dii_oc.onnx",
         "phoneme_type": "unicode",
         "lang": "oc-FR",
         "tokens_url": null,
@@ -23,11 +23,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_oc_dii_unicode/resolve/566a7b8912d97767366eac68a29058eb96bef71e/dii_oc.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_oc_dii_unicode/resolve/25372960d5664d0158bc3e445cb942f493cfd113/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_an_miro_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_an_miro_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_an_miro_unicode/resolve/e85003b067fee5722eee267efdfebe6a6f4eeeca/miro_an.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_an_miro_unicode/resolve/e7f5e390ffac80f5e23f10458a008dc963e4405b/miro_an.onnx",
         "phoneme_type": "unicode",
         "lang": "an-ES",
         "tokens_url": null,
@@ -36,11 +36,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_an_miro_unicode/resolve/e85003b067fee5722eee267efdfebe6a6f4eeeca/miro_an.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_an_miro_unicode/resolve/e7f5e390ffac80f5e23f10458a008dc963e4405b/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_an_dii_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_an_dii_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_an_dii_unicode/resolve/4dd20baefb5baadce4545295771454979e755a0d/dii_an.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_an_dii_unicode/resolve/2631dce082d7807a1b16c833a3ae622c607b1b57/dii_an.onnx",
         "phoneme_type": "unicode",
         "lang": "an-ES",
         "tokens_url": null,
@@ -49,11 +49,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_an_dii_unicode/resolve/4dd20baefb5baadce4545295771454979e755a0d/dii_an.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_an_dii_unicode/resolve/2631dce082d7807a1b16c833a3ae622c607b1b57/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_ast_miro_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_ast_miro_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ast_miro_unicode/resolve/99b1d8f68d02054abab36cc714232da36516fb9e/miro_ast.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ast_miro_unicode/resolve/3faa05825b1f770ad40fe61c3b62c226f576c5ef/miro_ast.onnx",
         "phoneme_type": "unicode",
         "lang": "ast",
         "tokens_url": null,
@@ -62,11 +62,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ast_miro_unicode/resolve/99b1d8f68d02054abab36cc714232da36516fb9e/miro_ast.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ast_miro_unicode/resolve/3faa05825b1f770ad40fe61c3b62c226f576c5ef/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_ast_dii_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_ast_dii_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ast_dii_unicode/resolve/be3f8bddf2c6d9b9b9d4d8d9d06d75132356059c/dii_ast.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ast_dii_unicode/resolve/0e314afd9c1ff2f6a34fe4b0ec3261777ceebfa5/dii_ast.onnx",
         "phoneme_type": "unicode",
         "lang": "ast",
         "tokens_url": null,
@@ -75,11 +75,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ast_dii_unicode/resolve/be3f8bddf2c6d9b9b9d4d8d9d06d75132356059c/dii_ast.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ast_dii_unicode/resolve/0e314afd9c1ff2f6a34fe4b0ec3261777ceebfa5/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_ca_miro_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_ca_miro_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ca_miro_espeak/resolve/954744f69eac04b807ba1ec55a7635571e8d7d66/miro_ca.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ca_miro_espeak/resolve/5c151463c989e958ff0b064f1b3e00e95f85bd98/miro_ca.onnx",
         "phoneme_type": "espeak",
         "lang": "ca",
         "tokens_url": null,
@@ -88,11 +88,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ca_miro_espeak/resolve/954744f69eac04b807ba1ec55a7635571e8d7d66/miro_ca.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ca_miro_espeak/resolve/5c151463c989e958ff0b064f1b3e00e95f85bd98/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_gl-ES_miro_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_gl-ES_miro_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_gl-ES_miro_unicode/resolve/65a7c1c1916c7cf21bf07beba208aeeb040ee53f/miro_gl-ES.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_gl-ES_miro_unicode/resolve/14257da93cd6d25cac8f95d3111782a82b98192d/miro_gl-ES.onnx",
         "phoneme_type": "unicode",
         "lang": "gl-ES",
         "tokens_url": null,
@@ -101,11 +101,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_gl-ES_miro_unicode/resolve/65a7c1c1916c7cf21bf07beba208aeeb040ee53f/miro_gl-ES.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_gl-ES_miro_unicode/resolve/14257da93cd6d25cac8f95d3111782a82b98192d/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_pt-PT_miro_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/eb9a020da900534d7232f11a6cf5d1ae1c545219/miro_pt-PT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/aec14a0428e6b67a47eb54b2baa4a604d42c0063/miro_pt-PT.onnx",
         "phoneme_type": "unicode",
         "lang": "pt-PT",
         "tokens_url": null,
@@ -114,11 +114,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/eb9a020da900534d7232f11a6cf5d1ae1c545219/miro_pt-PT.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_unicode/resolve/aec14a0428e6b67a47eb54b2baa4a604d42c0063/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone": {
         "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/ddaeacc8fdb74ceed69eb9f8c3b9571c8327d6b9/miro_pt-PT.onnx",
         "phoneme_type": "tugaphone",
         "lang": "pt-PT",
         "tokens_url": null,
@@ -127,11 +127,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/b081738cde545e32a8c27fd780c5a2d948f1fb1f/miro_pt-PT.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_miro_tugaphone/resolve/ddaeacc8fdb74ceed69eb9f8c3b9571c8327d6b9/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone": {
         "voice_id": "OpenVoiceOS/phoonnx_pt-PT_dii_tugaphone",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_dii_tugaphone/resolve/c6a3de7f8106b222f564c016acc01a3983c4febe/dii_pt-PT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_dii_tugaphone/resolve/8457bf5a81586f3d71f3b8d6123b454828dda117/dii_pt-PT.onnx",
         "phoneme_type": "tugaphone",
         "lang": "pt-PT",
         "tokens_url": null,
@@ -140,11 +140,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_dii_tugaphone/resolve/c6a3de7f8106b222f564c016acc01a3983c4febe/dii_pt-PT.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_pt-PT_dii_tugaphone/resolve/8457bf5a81586f3d71f3b8d6123b454828dda117/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_eu-ES_miro_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_eu-ES_miro_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_miro_espeak/resolve/414c31a9a3be2a6f1b0fb0a0eacc9ccf3d07ad13/miro_eu-ES.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_miro_espeak/resolve/25df42311d1045a442137240a7b6b19b6059cdd1/miro_eu-ES.onnx",
         "phoneme_type": "espeak",
         "lang": "eu-ES",
         "tokens_url": null,
@@ -153,11 +153,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_miro_espeak/resolve/414c31a9a3be2a6f1b0fb0a0eacc9ccf3d07ad13/miro_eu-ES.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_miro_espeak/resolve/25df42311d1045a442137240a7b6b19b6059cdd1/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_eu-ES_dii_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_eu-ES_dii_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_dii_espeak/resolve/45b520faa7dfe41ec264a7cce23edde17bd1ae75/dii_eu-ES.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_dii_espeak/resolve/e7c250706caeb88ccce312ed9b3f0d18d0a3d2d9/dii_eu-ES.onnx",
         "phoneme_type": "espeak",
         "lang": "eu-ES",
         "tokens_url": null,
@@ -166,11 +166,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_dii_espeak/resolve/45b520faa7dfe41ec264a7cce23edde17bd1ae75/dii_eu-ES.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_eu-ES_dii_espeak/resolve/e7c250706caeb88ccce312ed9b3f0d18d0a3d2d9/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_ar_miro_espeak_V2": {
         "voice_id": "OpenVoiceOS/phoonnx_ar_miro_espeak_V2",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ar_miro_espeak_V2/resolve/eb4ea9cccee5e1c28391c199288d0bbfb1a3f240/miro_ar.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ar_miro_espeak_V2/resolve/ad1498b6a3ab46b0f728bfd5e2c51eb905130738/miro_ar.onnx",
         "phoneme_type": "espeak",
         "lang": "ar",
         "tokens_url": null,
@@ -179,11 +179,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ar_miro_espeak_V2/resolve/eb4ea9cccee5e1c28391c199288d0bbfb1a3f240/miro_ar.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ar_miro_espeak_V2/resolve/ad1498b6a3ab46b0f728bfd5e2c51eb905130738/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_ar_dii_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_ar_dii_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ar_dii_espeak/resolve/c167997ee92148943228cf2f9a6473df67f75c14/dii_ar.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_ar_dii_espeak/resolve/a73ac51fb831f6fae1143d3f5159bc7a3cd8be25/dii_ar.onnx",
         "phoneme_type": "espeak",
         "lang": "ar",
         "tokens_url": null,
@@ -192,11 +192,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ar_dii_espeak/resolve/c167997ee92148943228cf2f9a6473df67f75c14/dii_ar.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_ar_dii_espeak/resolve/a73ac51fb831f6fae1143d3f5159bc7a3cd8be25/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_sv-SE_miro_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_sv-SE_miro_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_sv-SE_miro_espeak/resolve/de349a05fe1b8566d0fb82cc142ba40f2a79cbd8/miro_sv-SE.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_sv-SE_miro_espeak/resolve/479a80576f56aa8dc2cf5633882d83321d086d6b/miro_sv-SE.onnx",
         "phoneme_type": "espeak",
         "lang": "sv-SE",
         "tokens_url": null,
@@ -205,11 +205,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_sv-SE_miro_espeak/resolve/de349a05fe1b8566d0fb82cc142ba40f2a79cbd8/miro_sv-SE.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_sv-SE_miro_espeak/resolve/479a80576f56aa8dc2cf5633882d83321d086d6b/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_da-DK_miro_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_da-DK_miro_espeak/resolve/e657373bc7f3cb1266afad904f95a9afcfe4d2d7/miro_da-DK.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_da-DK_miro_espeak/resolve/9e28846f051bf0a572269b13c0924a1a7f048547/miro_da-DK.onnx",
         "phoneme_type": "espeak",
         "lang": "da-DK",
         "tokens_url": null,
@@ -218,11 +218,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_da-DK_miro_espeak/resolve/e657373bc7f3cb1266afad904f95a9afcfe4d2d7/miro_da-DK.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_da-DK_miro_espeak/resolve/9e28846f051bf0a572269b13c0924a1a7f048547/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_es-ES_dii_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_es-ES_dii_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_es-ES_dii_espeak/resolve/ea1cada56e49c2e4493516e6e02e6f2e3fee96c2/dii_es-ES.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_es-ES_dii_espeak/resolve/f5802b936514e6a457a81f8baa8e6c0bdaf15dab/dii_es-ES.onnx",
         "phoneme_type": "espeak",
         "lang": "es-ES",
         "tokens_url": null,
@@ -231,11 +231,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-ES_dii_espeak/resolve/ea1cada56e49c2e4493516e6e02e6f2e3fee96c2/dii_es-ES.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-ES_dii_espeak/resolve/f5802b936514e6a457a81f8baa8e6c0bdaf15dab/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_en-GB_miro": {
         "voice_id": "OpenVoiceOS/pipertts_en-GB_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_miro/resolve/21547fc247e6e87924ee1d06aa2eab321fe8b2a0/miro_en-GB.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_miro/resolve/4af87378df723b5d40f7d89f88384a6f36b283e5/miro_en-GB.onnx",
         "phoneme_type": "espeak",
         "lang": "en-GB",
         "tokens_url": null,
@@ -244,11 +244,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_miro/resolve/21547fc247e6e87924ee1d06aa2eab321fe8b2a0/miro_en-GB.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_miro/resolve/4af87378df723b5d40f7d89f88384a6f36b283e5/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_en-GB_dii": {
         "voice_id": "OpenVoiceOS/pipertts_en-GB_dii",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_dii/resolve/94542796fb163c48ed6be103026b787bd64ab81c/dii_en-GB.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_dii/resolve/8e75a8340bdc3cb4770a07e0dee64616a038fec9/dii_en-GB.onnx",
         "phoneme_type": "espeak",
         "lang": "en-GB",
         "tokens_url": null,
@@ -257,11 +257,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_dii/resolve/94542796fb163c48ed6be103026b787bd64ab81c/dii_en-GB.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_en-GB_dii/resolve/8e75a8340bdc3cb4770a07e0dee64616a038fec9/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_pt-BR_miro": {
         "voice_id": "OpenVoiceOS/pipertts_pt-BR_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_miro/resolve/4cb6765ec1c90f4071d0fa448d3601caf00fc123/miro_pt-BR.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_miro/resolve/bb3c79a323d3538b528df60508343cfdf37f3def/miro_pt-BR.onnx",
         "phoneme_type": "espeak",
         "lang": "pt-BR",
         "tokens_url": null,
@@ -270,11 +270,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_miro/resolve/4cb6765ec1c90f4071d0fa448d3601caf00fc123/miro_pt-BR.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_miro/resolve/bb3c79a323d3538b528df60508343cfdf37f3def/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_pt-BR_dii": {
         "voice_id": "OpenVoiceOS/pipertts_pt-BR_dii",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_dii/resolve/9e242675bce6503493fdd5089da91be9b6dfef22/dii_pt-BR.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_dii/resolve/9f1313d683527c93db8541f2f54d40c6ff5ad309/dii_pt-BR.onnx",
         "phoneme_type": "espeak",
         "lang": "pt-BR",
         "tokens_url": null,
@@ -283,11 +283,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_dii/resolve/9e242675bce6503493fdd5089da91be9b6dfef22/dii_pt-BR.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-BR_dii/resolve/9f1313d683527c93db8541f2f54d40c6ff5ad309/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_pt-PT_miro": {
         "voice_id": "OpenVoiceOS/pipertts_pt-PT_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_miro/resolve/4ac57b67764d78838a084fd16a78504244ee26fe/miro_pt-PT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_miro/resolve/ffbb4e1a78c1e59a4c1cd9404a27a85261717e80/miro_pt-PT.onnx",
         "phoneme_type": "espeak",
         "lang": "pt-PT",
         "tokens_url": null,
@@ -296,11 +296,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_miro/resolve/4ac57b67764d78838a084fd16a78504244ee26fe/miro_pt-PT.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_miro/resolve/ffbb4e1a78c1e59a4c1cd9404a27a85261717e80/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_pt-PT_dii": {
         "voice_id": "OpenVoiceOS/pipertts_pt-PT_dii",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_dii/resolve/d5089e4cd4b5f64cf991378de6f212387e9b3f83/dii_pt-PT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_dii/resolve/ef4d3ffe3da83ff12a010d0b12c827cb08125112/dii_pt-PT.onnx",
         "phoneme_type": "espeak",
         "lang": "pt-PT",
         "tokens_url": null,
@@ -309,11 +309,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_dii/resolve/d5089e4cd4b5f64cf991378de6f212387e9b3f83/dii_pt-PT.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_pt-PT_dii/resolve/ef4d3ffe3da83ff12a010d0b12c827cb08125112/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_es-ES_miro": {
         "voice_id": "OpenVoiceOS/pipertts_es-ES_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_es-ES_miro/resolve/cc0867e6f211b451dc0bbc8195fc8bc3aaf02c19/miro_es-ES.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_es-ES_miro/resolve/03ee576b67d46e09dfd0156b580a2b14ec7a0ca8/miro_es-ES.onnx",
         "phoneme_type": "espeak",
         "lang": "es-ES",
         "tokens_url": null,
@@ -322,11 +322,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_es-ES_miro/resolve/cc0867e6f211b451dc0bbc8195fc8bc3aaf02c19/miro_es-ES.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_es-ES_miro/resolve/03ee576b67d46e09dfd0156b580a2b14ec7a0ca8/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_it-IT_miro": {
         "voice_id": "OpenVoiceOS/pipertts_it-IT_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_miro/resolve/b2835bb8dc9c7c3ebc4b8b20f09f9a447efa0aed/miro_it-IT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_miro/resolve/23aef8da929e69a923edee78a626a32ab978c58d/miro_it-IT.onnx",
         "phoneme_type": "espeak",
         "lang": "it-IT",
         "tokens_url": null,
@@ -335,11 +335,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_miro/resolve/b2835bb8dc9c7c3ebc4b8b20f09f9a447efa0aed/miro_it-IT.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_miro/resolve/23aef8da929e69a923edee78a626a32ab978c58d/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_it-IT_dii": {
         "voice_id": "OpenVoiceOS/pipertts_it-IT_dii",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_dii/resolve/50ff3276a4b497223d9e1cd430ece177537323d0/dii_it-IT.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_dii/resolve/9c164b19552ecff3f9b7e864ece1a0d0377626e1/dii_it-IT.onnx",
         "phoneme_type": "espeak",
         "lang": "it-IT",
         "tokens_url": null,
@@ -348,11 +348,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_dii/resolve/50ff3276a4b497223d9e1cd430ece177537323d0/dii_it-IT.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_it-IT_dii/resolve/9c164b19552ecff3f9b7e864ece1a0d0377626e1/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_nl-NL_miro": {
         "voice_id": "OpenVoiceOS/pipertts_nl-NL_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_miro/resolve/52e19969b7a01afc21ffbcad333871c62c624c03/miro_nl-NL.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_miro/resolve/833abbba347c95905d947bddc26532ab4877b471/miro_nl-NL.onnx",
         "phoneme_type": "espeak",
         "lang": "nl-NL",
         "tokens_url": null,
@@ -361,11 +361,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_miro/resolve/52e19969b7a01afc21ffbcad333871c62c624c03/miro_nl-NL.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_miro/resolve/833abbba347c95905d947bddc26532ab4877b471/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_nl-NL_dii": {
         "voice_id": "OpenVoiceOS/pipertts_nl-NL_dii",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_dii/resolve/7bbbed507f87e512fbde7b81ef14d144353770d9/dii_nl-NL.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_dii/resolve/f60c50bca59272a647e1e21678fabfb6f2e7982c/dii_nl-NL.onnx",
         "phoneme_type": "espeak",
         "lang": "nl-NL",
         "tokens_url": null,
@@ -374,11 +374,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_dii/resolve/7bbbed507f87e512fbde7b81ef14d144353770d9/dii_nl-NL.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_nl-NL_dii/resolve/f60c50bca59272a647e1e21678fabfb6f2e7982c/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_de-DE_miro": {
         "voice_id": "OpenVoiceOS/pipertts_de-DE_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_miro/resolve/d9d4824ee6c3c1a2c901a89bd4b6abe2e6a61498/miro_de-DE.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_miro/resolve/ec1f1d7527ab4b01957415812391153d84dd1f07/miro_de-DE.onnx",
         "phoneme_type": "espeak",
         "lang": "de-DE",
         "tokens_url": null,
@@ -387,11 +387,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_miro/resolve/d9d4824ee6c3c1a2c901a89bd4b6abe2e6a61498/miro_de-DE.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_miro/resolve/ec1f1d7527ab4b01957415812391153d84dd1f07/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_de-DE_dii": {
         "voice_id": "OpenVoiceOS/pipertts_de-DE_dii",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_dii/resolve/403b0c1f5c1e58f019a9dfaf599bc4eeb76a88dc/dii_de-DE.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_dii/resolve/5d740e4e28dce1309080709edf00b7cd84fe522c/dii_de-DE.onnx",
         "phoneme_type": "espeak",
         "lang": "de-DE",
         "tokens_url": null,
@@ -400,11 +400,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_dii/resolve/403b0c1f5c1e58f019a9dfaf599bc4eeb76a88dc/dii_de-DE.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_de-DE_dii/resolve/5d740e4e28dce1309080709edf00b7cd84fe522c/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_fr-FR_miro": {
         "voice_id": "OpenVoiceOS/pipertts_fr-FR_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_fr-FR_miro/resolve/7fcfed4ea7494e1fc46ac11399dfc94c56bacb00/miro_fr-FR.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_fr-FR_miro/resolve/b9bffbe9aa66444a065ea93e2984191e33431b67/miro_fr-FR.onnx",
         "phoneme_type": "espeak",
         "lang": "fr-FR",
         "tokens_url": null,
@@ -413,11 +413,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_fr-FR_miro/resolve/7fcfed4ea7494e1fc46ac11399dfc94c56bacb00/miro_fr-FR.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_fr-FR_miro/resolve/b9bffbe9aa66444a065ea93e2984191e33431b67/phoonnx.json"
     },
     "OpenVoiceOS/pipertts_en-US_miro": {
         "voice_id": "OpenVoiceOS/pipertts_en-US_miro",
-        "model_url": "https://huggingface.co/Phoonnx/pipertts_en-US_miro/resolve/d74eb0a63aad42331ee35fbd9a0617759c39a896/miro_en-US.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/pipertts_en-US_miro/resolve/25f3ea7436b520a839860ba2eb6721cc3002b79e/miro_en-US.onnx",
         "phoneme_type": "espeak",
         "lang": "en-US",
         "tokens_url": null,
@@ -426,11 +426,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "piper",
-        "config_url": "https://huggingface.co/Phoonnx/pipertts_en-US_miro/resolve/d74eb0a63aad42331ee35fbd9a0617759c39a896/miro_en-US.onnx.json"
+        "config_url": "https://huggingface.co/Phoonnx/pipertts_en-US_miro/resolve/25f3ea7436b520a839860ba2eb6721cc3002b79e/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_fy-NL_miro_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_fy-NL_miro_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_miro_unicode/resolve/46964715e1b6aabe5038c3ee8617ee60afd8ca09/miro_fy-NL.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_miro_unicode/resolve/5c611bfcf085fe15e6c0cf01c6af943ed3be63be/miro_fy-NL.onnx",
         "phoneme_type": "unicode",
         "lang": "fy-NL",
         "tokens_url": null,
@@ -439,11 +439,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_miro_unicode/resolve/46964715e1b6aabe5038c3ee8617ee60afd8ca09/miro_fy-NL.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_miro_unicode/resolve/5c611bfcf085fe15e6c0cf01c6af943ed3be63be/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_fy-NL_dii_unicode": {
         "voice_id": "OpenVoiceOS/phoonnx_fy-NL_dii_unicode",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_dii_unicode/resolve/343812042f6569f67f3926d79f0da77b4b370052/dii_fy-NL.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_dii_unicode/resolve/d67d8afe2046fec64c1993b9f9e05250c94e54b8/dii_fy-NL.onnx",
         "phoneme_type": "unicode",
         "lang": "fy-NL",
         "tokens_url": null,
@@ -452,11 +452,11 @@
         "phoneme_map_url": null,
         "alphabet": "unicode",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_dii_unicode/resolve/343812042f6569f67f3926d79f0da77b4b370052/dii_fy-NL.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_fy-NL_dii_unicode/resolve/d67d8afe2046fec64c1993b9f9e05250c94e54b8/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_es-CO_miro_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_es-CO_miro_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_miro_espeak/resolve/6a8552a60b090907236dbf14ca3f8e3387f7d1ba/miro_es-CO.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_miro_espeak/resolve/0e2f90678e621be72725b206cff14a5512b174c3/miro_es-CO.onnx",
         "phoneme_type": "espeak",
         "lang": "es-CO",
         "phonemizer_lang": "es-419",
@@ -466,11 +466,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_miro_espeak/resolve/6a8552a60b090907236dbf14ca3f8e3387f7d1ba/miro_es-CO.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_miro_espeak/resolve/0e2f90678e621be72725b206cff14a5512b174c3/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_es-CO_dii_espeak": {
         "voice_id": "OpenVoiceOS/phoonnx_es-CO_dii_espeak",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_dii_espeak/resolve/d4747c60b2a989eee9950a1bfcc1897c8ceb40a9/dii_es-CO.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_dii_espeak/resolve/460347dabc4d572f750ef27aba150379e9c926c9/dii_es-CO.onnx",
         "phoneme_type": "espeak",
         "lang": "es-CO",
         "phonemizer_lang": "es-419",
@@ -480,11 +480,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_dii_espeak/resolve/d4747c60b2a989eee9950a1bfcc1897c8ceb40a9/dii_es-CO.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_es-CO_dii_espeak/resolve/460347dabc4d572f750ef27aba150379e9c926c9/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i": {
         "voice_id": "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_miro_o2i/resolve/4f7e9d5cd2b30914bbe3ed3971e2b98f4b688ae5/miro_kab-DZ.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_miro_o2i/resolve/19f285671d4488d932608c06dca84200959fb24f/miro_kab-DZ.onnx",
         "phoneme_type": "orthography2ipa",
         "lang": "kab-DZ",
         "tokens_url": null,
@@ -493,11 +493,11 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_miro_o2i/resolve/4f7e9d5cd2b30914bbe3ed3971e2b98f4b688ae5/miro_kab-DZ.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_miro_o2i/resolve/19f285671d4488d932608c06dca84200959fb24f/phoonnx.json"
     },
     "OpenVoiceOS/phoonnx_kab-DZ_dii_o2i": {
         "voice_id": "OpenVoiceOS/phoonnx_kab-DZ_dii_o2i",
-        "model_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_dii_o2i/resolve/176804a1fb57c4b1bbf02b872440cfc9e757cb6b/dii_kab-DZ.onnx",
+        "model_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_dii_o2i/resolve/22078608194bc26030e1daec0d6decb115a76f93/dii_kab-DZ.onnx",
         "phoneme_type": "orthography2ipa",
         "lang": "kab-DZ",
         "tokens_url": null,
@@ -506,6 +506,6 @@
         "phoneme_map_url": null,
         "alphabet": "ipa",
         "engine": "phoonnx",
-        "config_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_dii_o2i/resolve/176804a1fb57c4b1bbf02b872440cfc9e757cb6b/dii_kab-DZ.json"
+        "config_url": "https://huggingface.co/Phoonnx/phoonnx_kab-DZ_dii_o2i/resolve/22078608194bc26030e1daec0d6decb115a76f93/phoonnx.json"
     }
 }

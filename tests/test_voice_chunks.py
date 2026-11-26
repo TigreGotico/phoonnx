@@ -89,7 +89,7 @@ class TestChunkSize:
 
 
 class TestShamiStageOrder:
-    """Shami's language ids follow the contract order: normalise the whole text, then cut."""
+    """Shami's language ids follow the contract order: normalise the text once, then cut."""
 
     TEXT = "عندي 12 قطة. I have 3 cats."
 
@@ -101,8 +101,13 @@ class TestShamiStageOrder:
         assert seen == [self.TEXT]
 
     def test_language_ids_are_those_of_the_normalised_sentences(self):
+        """Each script run is normalised in its own language: the English digit reads "three"."""
+        shami = ShamiPhonemizer()
+        params = text2spoken.NormalizationParams(script_languages=text2spoken.FrozenMap(shami.script_languages))
+        normalised = text2spoken.normalize(self.TEXT, "ar", params=params)
+        assert "three" in normalised
         utterances = _utterances(_shami_voice(), self.TEXT)
-        expected = list(ShamiPhonemizer().phonemize_with_language_ids_lazy(text2spoken.normalize(self.TEXT, "ar"), "ar"))
+        expected = list(shami.phonemize_with_language_ids_lazy(normalised, "ar"))
         assert [list(u.symbols) for u in utterances] == [phonemes for phonemes, _ in expected]
         assert [list(u.streams["language_ids"]) for u in utterances] == [ids for _, ids in expected]
         assert {1, 2} <= {i for u in utterances for i in u.streams["language_ids"]}

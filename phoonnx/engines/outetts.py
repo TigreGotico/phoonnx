@@ -312,6 +312,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 
 class OuteTTSAdapter(BaseOnnxAdapter):
     """Adapter for OuteTTS 1.0 (codec-LM + DAC.speech decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
@@ -414,8 +415,7 @@ class OuteTTSAdapter(BaseOnnxAdapter):
         if syn_config is not None:
             name = syn_config.extra.get("voice")
         if not name:
-            cfg = getattr(voice, "config", None)
-            name = (getattr(cfg, "engine_params", None) or {}).get("voice")
+            name = voice.config.engine_params.get("voice")
         if not name:
             name = self.default_speaker
         if not name:

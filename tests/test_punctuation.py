@@ -230,47 +230,32 @@ class TestPhoonnxPiperSideCars:
 
 
 class TestModelManagerKeepsTheFlag:
-    """The voice manager rebuilds a voice's phonemizer when the index overrides
-    the phoneme type or names a phonemizer model; the rebuilt one must keep the
-    voice's punctuation setting."""
+    """A vosk dictionary of the index becomes the phonemizer model of the voice;
+    the phonemizer built with it keeps the voice's punctuation setting."""
 
-    def _load(self, override_phoneme_type: bool, **info_kwargs):
-        from types import SimpleNamespace
-        from unittest.mock import PropertyMock, patch
-        from phoonnx import model_manager
+    def test_a_dictionary_from_the_index(self):
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from phoonnx import model_manager, voice as voice_module
         from phoonnx.config import PhonemeType
 
-        voice_config = VoiceConfig.from_dict(piper_config())
-        assert voice_config.keep_punctuation is True
-        if override_phoneme_type:
-            voice_config.phoneme_type = PhonemeType.GRAPHEMES  # the index says espeak
-        voice = SimpleNamespace(config=voice_config, phonemizer=None)
-        info = model_manager.TTSModelInfo(voice_id="test/voice", lang="en-us",
-                                          model_url="model.onnx", config_url="config.json",
-                                          **info_kwargs)
-        index_config = SimpleNamespace(lang_code="en-us", phonemizer_lang=None, phoneme_type=PhonemeType.ESPEAK,
-                                       alphabet=Alphabet.IPA)
-        with patch.object(model_manager.TTSModelInfo, "config", new_callable=PropertyMock,
-                          return_value=index_config), \
-                patch.object(model_manager, "check_lang_supported"), \
-                patch.object(model_manager.TTSModelInfo, "download_model", return_value="model.onnx"), \
-                patch.object(model_manager.TTSModelInfo, "hub_path", return_value=None), \
+        info = model_manager.TTSModelInfo(voice_id="test/voice", lang="ru-RU", model_url="model.onnx",
+                                          config_url="config.json", dictionary_url="dictionary")
+        config = piper_config(phoneme_type="vosk", espeak={"voice": "ru"}, keep_punctuation=True)
+        with patch.object(model_manager.TTSModelInfo, "download_config", return_value=config), \
+                patch.object(model_manager.TTSModelInfo, "download_dictionary", return_value=Path("dict.txt")), \
+                patch.object(model_manager.TTSModelInfo, "hub_path", return_value=Path("config.json")), \
+                patch.object(model_manager.TTSModelInfo, "download_model", return_value=Path("model.onnx")), \
                 patch.object(model_manager.TTSModelInfo, "engine_params", return_value={}), \
-                patch.object(model_manager.TTSVoice, "load", return_value=voice):
-            return info.load()
-
-    def test_phonemizer_model_from_the_index(self):
-        from phoonnx.config import PhonemeType
-        voice = self._load(False, phonemizer_model="variant",
-                           phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-        assert voice.config.phonemizer_model == "variant"
-        assert voice.phonemizer.keep_punctuation is True
-
-    def test_phoneme_type_override_from_the_index(self):
-        from phoonnx.config import PhonemeType
-        voice = self._load(True, phoneme_type=PhonemeType.ESPEAK, alphabet=Alphabet.IPA)
-        assert voice.config.phoneme_type == PhonemeType.ESPEAK
-        assert voice.phonemizer.keep_punctuation is True
+                patch.object(model_manager, "make_session", return_value=MagicMock()), \
+                patch.object(voice_module, "check_lang_supported"), \
+                patch.object(voice_module, "_voice_phonemizer") as build:
+            voice = info.load()
+        assert voice.config.keep_punctuation is True
+        assert voice.config.phonemizer_model == "dict.txt"
+        assert voice.phonemizer is build.return_value
+        assert build.call_args.args[:3] == (PhonemeType.VOSK, voice.config.alphabet, "dict.txt")
+        assert build.call_args.kwargs["keep_punctuation"] is True
 
 
 def test_a_yourtts_export_keeps_the_punctuation_flag_it_was_trained_with():
