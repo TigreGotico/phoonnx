@@ -249,6 +249,19 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         return {"total_step": float(self.total_step), "speed": self.speed,
                 "silence_duration": self.silence_duration}
 
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        """SuperTonic's ``speed`` for a VITS-style ``length_scale``.
+
+        The predicted durations are divided by ``speed``, so it is a rate, and its
+        default is not 1 (1.05). The length scale scales that default: 1 leaves the voice
+        as it is, 2 makes it twice as slow. Without this, ``<prosody rate>``, the pace of
+        ``<emphasis>`` and a ``length_scale`` in a call or in the voice config never reached
+        the model. A ``speed`` in a call's ``extra`` wins. A ``speed`` in the
+        voice's ``engine_params`` is the voice's normal pace: a call's rate scales it, the
+        voice config's own ``length_scale`` does not (``TTSVoice``).
+        """
+        return {"speed": self.speed / length_scale}
+
     def configure(self, voice_config: Any) -> None:
         """Load the three auxiliary graphs, the tts.json config, the unicode indexer
         (converted into a standard ``Vocabulary``/``TTSTokenizer``) and the voice's style

@@ -397,6 +397,41 @@ def test_synthesize_speed_scales_duration():
     assert ad.duration_predictor.last_feed is not None
 
 
+def test_a_length_scale_scales_the_voices_own_speed():
+    # speed is a rate (durations are divided by it) whose default is 1.05, not 1
+    assert SuperTonicAdapter().length_scale_params(1.0) == {"speed": 1.05}
+    assert SuperTonicAdapter().length_scale_params(2.0) == {"speed": pytest.approx(0.525)}
+    assert SuperTonicAdapter(speed=1.2).length_scale_params(0.5) == {"speed": pytest.approx(2.4)}
+
+
+def test_ssml_rate_reaches_supertonic_as_its_speed():
+    from phoonnx.config import SynthesisConfig, VoiceConfig
+    from phoonnx.engines.base import AdapterSynthesisResult
+    from phoonnx.voice import AudioChunk, TTSVoice
+
+    config = VoiceConfig.from_dict({
+        "phoonnx_version": "1.0", "engine": "supertonic", "phoneme_type": "unicode",
+        "alphabet": "unicode", "lang_code": "en-US", "audio": {"sample_rate": 44100},
+        "num_symbols": 8, "phoneme_id_map": {"_": [0], "^": [1], "$": [2], "a": [3]}})
+    sent = []
+
+    class _Voice(TTSVoice):
+        frontend = None  # the document holds no say-as
+
+        def __init__(self):  # no model: the engine call is recorded
+            self.config, self.adapter, self.session = config, SuperTonicAdapter(), None
+
+        def synthesize(self, text, syn_config=None, include_alignments=False):
+            self._infer([3], syn_config or SynthesisConfig())
+            yield AudioChunk(sample_rate=44100, sample_width=2, sample_channels=1,
+                             audio_float_array=np.full(441, 0.1, dtype=np.float32))
+
+    voice = _Voice()
+    voice.adapter.synthesize = lambda request, session: (
+        sent.append(request.params) or AdapterSynthesisResult(audio=np.zeros(1, np.float32)))
+    list(voice.synthesize_ssml('<speak><prosody rate="x-slow">slow</prosody> plain</speak>'))
+    assert [round(p["speed"], 4) for p in sent] == [round(1.05 * 0.6, 4), 1.05], (
+        "x-slow is 0.6 of the voice's own speed; the words outside it keep the default")
 def test_bucket_size():
     assert bucket_size(1, 256) == 256
     assert bucket_size(256, 256) == 256

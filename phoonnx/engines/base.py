@@ -232,7 +232,10 @@ class BaseOnnxAdapter(ABC):
         A length scale above 1 makes the speech slower. An engine that reads
         ``length_scale`` itself keeps this default, which returns nothing. An
         engine with a speed key of its own returns that key, scaled the way the
-        engine reads it.
+        engine reads it. ``TTSVoice`` sets the key from it, unless the voice config
+        or the call names the key. A key the voice config names is scaled when the
+        call changes the length scale, by the ratio this hook gives between the
+        call's length scale and the voice's.
         """
         return {}
 

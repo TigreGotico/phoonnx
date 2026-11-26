@@ -126,6 +126,8 @@ This config sets no scales and the call sets none, so the engine's own default a
 
 The keys of `SynthesisConfig.extra` come last and win over all four.
 
+An engine with a speed key of its own (`pace`, `speed` or `d_factor`) gets that key from the resolved `length_scale`, unless `engine_params` or `extra` names it. When `engine_params` names it, the configured value is the voice's normal pace: a call that changes the length scale scales it by the same ratio, and the `inference` block's `length_scale` does not change it. A key named in `extra` wins.
+
 ## Part 2: Name list
 
 This part lists the names that exist in the code. The package root exports eleven names, listed below. Import every other name from its own module.
