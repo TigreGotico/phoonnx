@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a2](https://github.com/TigreGotico/phoonnx/tree/1.138.10a2) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a1...1.138.10a2)
+
+**Merged pull requests:**
+
+- test: follow the provenance revision, scriptconv Shami runs and bifonia trema marks [\#1159](https://github.com/TigreGotico/phoonnx/pull/1159) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a1](https://github.com/TigreGotico/phoonnx/tree/1.138.10a1) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.9a2...1.138.10a1)
@@ -361,10 +369,6 @@
 ## [1.135.1a1](https://github.com/TigreGotico/phoonnx/tree/1.135.1a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a3...1.135.1a1)
-
-**Merged pull requests:**
-
-- fix\(deps\): raise text2spoken to 0.0.2a107 and every scriptconv floor to 0.0.4a156 [\#997](https://github.com/TigreGotico/phoonnx/pull/997) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.0a3](https://github.com/TigreGotico/phoonnx/tree/1.135.0a3) (2026-11-24)
 
