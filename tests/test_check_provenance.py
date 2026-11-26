@@ -97,7 +97,9 @@ def test_another_lang_warns(tmp_path):
     warnings = _load_warnings(tmp_path, phonemizer_identity=trained)
     assert len(warnings) == 1
     assert "lang: trained 'es-ES', running 'pt-PT'" in warnings[0]
-    assert f"revision: trained {trained['revision']!r}, running {running['revision']!r}" in warnings[0]
+    # the revision is the version string of the backend, so it does not depend on the language
+    assert trained["revision"] == running["revision"]
+    assert "revision:" not in warnings[0]
 
 
 def test_a_recorded_frontend_version_is_compared(tmp_path):
