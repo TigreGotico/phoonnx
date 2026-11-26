@@ -14,6 +14,7 @@ from phoonnx.engines.fastpitch import FastPitchAdapter
 from phoonnx.engines.mixertts import MixerTTSAdapter
 from phoonnx.engines.optispeech import OptiSpeechAdapter
 from phoonnx.engines.styletts2 import StyleTTS2Adapter
+from phoonnx.engines.supertonic import SuperTonicAdapter
 from phoonnx.engines.vits import VitsAdapter
 from phoonnx.voice import AudioChunk, TTSVoice
 
@@ -87,12 +88,14 @@ def test_a_call_scale_wins_over_the_config_and_the_engine():
 
 
 # The engines with a speed key of their own, and that key for length_scale 2.0:
-# MixerTTS, FastPitch and StyleTTS2 read a rate, so twice as slow is 1 / 2, and
+# MixerTTS, FastPitch and StyleTTS2 read a rate, so twice as slow is 1 / 2;
+# SuperTonic reads a rate whose default is 1.05, so twice as slow is 1.05 / 2; and
 # OptiSpeech reads a duration scale, so twice as slow is 2.
 OWN_SPEED_KEY = [
     (MixerTTSAdapter, "pace", 0.5),
     (FastPitchAdapter, "pace", 0.5),
     (StyleTTS2Adapter, "speed", 0.5),
+    (SuperTonicAdapter, "speed", 1.05 / 2),
     (OptiSpeechAdapter, "d_factor", 2.0),
 ]
 
