@@ -4,7 +4,7 @@
 covers: how to prepare voices online and then run phoonnx with no network, what works offline and what fails
 source: phoonnx/model_manager.py:_hf_fetch, phoonnx/model_manager.py:_offline_snapshot, phoonnx/model_manager.py:_voice_snapshot, phoonnx/model_manager.py:TTSModelManager.merge_default_voices, phoonnx/cli.py:download_voice, phoonnx/opm.py:PhoonnxTTSPlugin.get_tts
 generated: no
-verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/: [0-9]+$/: .../') <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/offline.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_CACHE=.venv/verify-empty-hub HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices download piper/en_US-danny-low 2>&1) <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices download piper\/en_US-danny-low$/,/^\x60\x60\x60$/{//!p}' docs/offline.md)
+verify: diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices update-cache | sed -E 's/: [0-9]+$/: .../') <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices update-cache$/,/^\x60\x60\x60$/{//!p}' docs/offline.md) && diff <(XDG_CACHE_HOME=.venv/verify-cache HF_HUB_CACHE=.venv/verify-empty-hub HF_HUB_OFFLINE=1 .venv/bin/phoonnx-voices download piper/en_US-danny-low 2>&1 | grep -v 'W:onnxruntime') <(sed -n '/^\$ HF_HUB_OFFLINE=1 phoonnx-voices download piper\/en_US-danny-low$/,/^\x60\x60\x60$/{//!p}' docs/offline.md)
 see: quickstart.md, deployment.md, voice_manager.md, docker.md
 -->
 
