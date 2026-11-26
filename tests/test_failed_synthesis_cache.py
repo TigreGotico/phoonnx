@@ -185,6 +185,10 @@ class TestConcurrentRequestsForTheSameSentence(unittest.TestCase):
         directory = tempfile.mkdtemp()
         target = os.path.join(directory, "audio.wav")
         plugin = _plugin(self)
+        # MagicMock creates its magic methods on first use, and that is not
+        # thread-safe: one warm-up call keeps the race inside the plugin.
+        plugin.get_tts("a warm-up sentence", os.path.join(directory, "warm.wav"))
+        os.remove(os.path.join(directory, "warm.wav"))
         errors = []
 
         def go():
