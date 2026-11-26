@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a3](https://github.com/TigreGotico/phoonnx/tree/1.138.10a3) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a2...1.138.10a3)
+
+**Merged pull requests:**
+
+- test: pin the und clause of check\_lang\_supported [\#1163](https://github.com/TigreGotico/phoonnx/pull/1163) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a2](https://github.com/TigreGotico/phoonnx/tree/1.138.10a2) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a1...1.138.10a2)
@@ -341,10 +349,6 @@
 ## [1.136.0a1](https://github.com/TigreGotico/phoonnx/tree/1.136.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.2a2...1.136.0a1)
-
-**Merged pull requests:**
-
-- feat: group SynthesisConfig settings into stages, audio and reference [\#1000](https://github.com/TigreGotico/phoonnx/pull/1000) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.2a2](https://github.com/TigreGotico/phoonnx/tree/1.135.2a2) (2026-11-24)
 
