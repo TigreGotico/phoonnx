@@ -225,4 +225,4 @@ the audio it changes.
 
 ---
 
-[Docs index](index.md) · Previous: [Usage guide](usage.md) · Next: [Voice cloning](cloning.md)
+[← Usage guide](usage.md) · [Home](index.md) · [Voice cloning →](cloning.md)

@@ -443,4 +443,4 @@ The [Configuration reference](../configuration.md) describes the full loaded for
 
 ---
 
-[Docs index](../index.md) · Previous: [Preprocess reference](preprocess.md) · Next: [Export to ONNX](export.md)
+[← Preprocess reference](preprocess.md) · [Home](../index.md) · [Export to ONNX →](export.md)

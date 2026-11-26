@@ -186,4 +186,4 @@ The export does not write the mel graph or the vocoder. Add `zipvoice_mel.onnx` 
 
 ---
 
-[Docs index](../../index.md) · Previous: [x-vits](xvits.md) · Next: [Chatterbox](chatterbox.md)
+[← x-vits](xvits.md) · [Home](../../index.md) · [Chatterbox →](chatterbox.md)

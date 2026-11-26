@@ -111,4 +111,4 @@ translate the audio into another language, and the floor shows that failure.
 
 ---
 
-[Docs index](index.md) · Previous: [Galician phonemizer](galician.md) · Next: [Usage guide](usage.md)
+[← Galician phonemizer](galician.md) · [Home](index.md) · [Usage guide →](usage.md)

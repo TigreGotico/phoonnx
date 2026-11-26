@@ -324,4 +324,4 @@ voice loads offline. See [Use phoonnx offline](offline.md).
 
 ---
 
-[Docs index](index.md) · Previous: [Docs index](index.md) · Next: [Quickstart](quickstart.md)
+[Home](index.md) · [Quickstart →](quickstart.md)

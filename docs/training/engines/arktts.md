@@ -112,4 +112,4 @@ The three checkpoints are Apache-2.0. The `maider` and `antton` clips come from 
 
 ---
 
-[Docs index](../../index.md) · Previous: [Qwen3-TTS](qwen3tts.md) · Next: [F5-TTS](f5tts.md)
+[← Qwen3-TTS](qwen3tts.md) · [Home](../../index.md) · [F5-TTS →](f5tts.md)

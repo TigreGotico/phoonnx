@@ -92,4 +92,4 @@ The [`docker` workflow](../.github/workflows/docker.yml) builds the image for ea
 
 ---
 
-[Docs index](index.md) · Previous: [OVOS plugin](ovos_plugin.md) · Next: [Deployment](deployment.md)
+[← OVOS plugin](ovos_plugin.md) · [Home](index.md) · [Deployment →](deployment.md)

@@ -115,4 +115,4 @@ For servers and containers, [Deployment](deployment.md) shows how to keep the ca
 
 ---
 
-[Docs index](index.md) · Previous: [Precision variants](precision.md) · Next: [Pocket TTS](pockettts.md)
+[← Precision variants](precision.md) · [Home](index.md) · [Pocket TTS →](pockettts.md)

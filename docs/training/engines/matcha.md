@@ -166,4 +166,4 @@ The alVoCat Vocos vocoder (`projecte-aina/alvocat-vocos-22khz`) is for non-comme
 
 ---
 
-[Docs index](../../index.md) · Previous: [Export to ONNX](../export.md) · Next: [GlowTTS](glowtts.md)
+[← Export to ONNX](../export.md) · [Home](../../index.md) · [GlowTTS →](glowtts.md)

@@ -187,4 +187,4 @@ deception, or for unlawful content.
 
 ---
 
-[Docs index](index.md) · Previous: [Use phoonnx offline](offline.md) · Next: [Orpheus](orpheus.md)
+[← Use phoonnx offline](offline.md) · [Home](index.md) · [Orpheus →](orpheus.md)

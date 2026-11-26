@@ -156,4 +156,4 @@ OuteAI owns the model and the research credit. Do not clone a voice without the 
 
 ---
 
-[Docs index](../../index.md) · Previous: [Shami](shami.md) · Next: [OmniVoice](omnivoice.md)
+[← Shami](shami.md) · [Home](../../index.md) · [OmniVoice →](omnivoice.md)
