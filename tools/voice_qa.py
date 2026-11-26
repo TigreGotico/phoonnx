@@ -34,6 +34,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from voice_sweep import normalise, wer  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "tools"))
+from build_voice_table import LOW_RESOURCE, LOW_RESOURCE_PASS_WER, MAX_FLOOR, PASS_WER  # noqa: E402
+
 LANGS = ["pt-PT", "pt-BR", "es-CO", "fr-FR", "it-IT", "de-DE", "nl-NL", "da-DK",
          "kab", "hi-IN", "bn-IN", "mwr"]
 SENTENCES = {
@@ -54,7 +57,6 @@ SENTENCES = {
 REFERENCE = {"pt-PT": "pt_br", "pt-BR": "pt_br", "es-CO": "es_419", "fr-FR": "fr_fr",
              "it-IT": "it_it", "de-DE": "de_de", "nl-NL": "nl_nl", "da-DK": "da_dk",
              "hi-IN": "hi_in", "bn-IN": "bn_in", "kab": "boffire/kabyle-ljspeech-22khz"}
-LOW_RESOURCE = {"kab", "hi-IN", "bn-IN"}
 NOTES = {"kab": "sentences not checked by a native speaker"}
 ISSUES = {"bn-IN": "https://github.com/TigreGotico/phoonnx/issues/1182",
           "da-DK": "https://github.com/TigreGotico/phoonnx/issues/1186"}
@@ -62,7 +64,7 @@ PATHS = ("manual", "index", "plugin")
 
 
 def threshold(lang: str) -> float:
-    return 0.5 if lang in LOW_RESOURCE else 0.35
+    return LOW_RESOURCE_PASS_WER if lang in LOW_RESOURCE else PASS_WER
 
 
 def reference_clips(lang: str, n: int = 2) -> list:
@@ -119,8 +121,6 @@ def score(asr: Asr, lang: str, audio, rate: int, text: str) -> float:
     return round(wer(normalise(text, lang), normalise(asr.transcribe(audio, rate), lang)), 3)
 
 
-#: An ASR floor above this makes the WER of a voice meaningless.
-MAX_FLOOR = 0.25
 
 
 def classify(wers: list, lang: str, floor) -> str:

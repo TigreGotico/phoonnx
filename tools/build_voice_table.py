@@ -10,6 +10,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULT = ROOT / "docs/data/voice_qa.json"
+
+PASS_WER = 0.35
+LOW_RESOURCE_PASS_WER = 0.5
+LOW_RESOURCE = ("kab", "hi-IN", "bn-IN")
+#: An ASR floor above this makes the WER of a voice meaningless.
+MAX_FLOOR = 0.25
 PAGE = ROOT / "docs/voices.md"
 PATHS = ("manual", "index", "plugin")
 
@@ -57,8 +63,9 @@ def render(records: list) -> str:
         "",
         "The WER of each language comes from its own onnx-asr model, the one that the "
         "ovos-stt-plugin-onnx-asr registry names. The ASR floor is the WER of that model on two "
-        "clips of real speech. A WER of 0.35 or less passes, and 0.5 or less for kab, hi-IN and bn-IN. "
-        "When the floor is above 0.25, the cell is ASR-UNVERIFIED and gives no WER.",
+        f"clips of real speech. A WER of {PASS_WER} or less passes, and {LOW_RESOURCE_PASS_WER} or less for "
+        f"{', '.join(LOW_RESOURCE[:-1])} and {LOW_RESOURCE[-1]}. "
+        f"When the floor is above {MAX_FLOOR}, the cell is ASR-UNVERIFIED and gives no WER.",
         "",
         "| Language | Voice | Engine | Phonemes / alphabet | ASR model | ASR floor | Manual | Index | Plugin | Note |",
         "| :--- | :--- | :--- | :--- | :--- | ---: | :--- | :--- | :--- | :--- |",
