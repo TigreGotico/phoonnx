@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a10](https://github.com/TigreGotico/phoonnx/tree/1.138.10a10) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a9...1.138.10a10)
+
+**Merged pull requests:**
+
+- chore: require scriptconv 0.0.4a185 [\#1177](https://github.com/TigreGotico/phoonnx/pull/1177) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a9](https://github.com/TigreGotico/phoonnx/tree/1.138.10a9) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a8...1.138.10a9)
