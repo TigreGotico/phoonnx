@@ -28,6 +28,7 @@ from phoonnx.engines.base import (
 
 class ShamiAdapter(BaseOnnxAdapter):
     """Adapter for ShamiVITS-family ONNX models."""
+    VITS_GRAPH = True
 
     def build_feed_dict(
         self,

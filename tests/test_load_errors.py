@@ -55,6 +55,7 @@ def _vits_voice(tmp_path, adapter_cls, num_symbols, id_map=None):
         config["num_symbols"] = num_symbols
     (tmp_path / "model.onnx.json").write_text(json.dumps(config))
     adapter = MagicMock(spec=adapter_cls or VitsAdapter)
+    adapter.VITS_GRAPH = (adapter_cls or VitsAdapter).VITS_GRAPH
     with patch("phoonnx.voice.detect_engine", return_value=adapter):
         return TTSVoice.load(tmp_path / "model.onnx")
 
