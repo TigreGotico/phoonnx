@@ -176,8 +176,15 @@ The 8-bit graphs are not the default for three reasons:
   8-bit graphs and 6.2 s with the full ones, on an AMD Ryzen 7 5800.
 - The Italian 8-bit graphs repeat words on some sentences.
 
-The full graphs are larger: about 380 MB per language against about 110 MB, and 1.3 GB for
-French, whose model has 24 layers.
+The full graphs are larger: a voice downloads 446 MB against 171 MB for `pockettts/en/alba`,
+and 1.37 GB for a French voice, whose model has 24 layers. The voices of one language share
+their graphs, so a second voice of the same language downloads only its voice state.
+
+**After an upgrade, offline:** a device that downloaded a voice with the 8-bit graphs only has
+those in its cache, and `precision="auto"` now asks for the full graphs. Offline, that load
+fails. To keep using the 8-bit files, set `PHOONNX_PRECISION=int8` or load with
+`precision="int8"` (the OVOS plugin's `precision` key). To use the full graphs, download the
+voice again while online.
 
 ## Licensing
 
