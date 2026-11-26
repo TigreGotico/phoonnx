@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a1](https://github.com/TigreGotico/phoonnx/tree/1.138.10a1) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.9a2...1.138.10a1)
+
+**Merged pull requests:**
+
+- fix: give each index voice load its own config, and split streaming voices [\#1132](https://github.com/TigreGotico/phoonnx/pull/1132) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.9a2](https://github.com/TigreGotico/phoonnx/tree/1.138.9a2) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.9a1...1.138.9a2)
@@ -349,10 +357,6 @@
 ## [1.135.1a2](https://github.com/TigreGotico/phoonnx/tree/1.135.1a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.1a1...1.135.1a2)
-
-**Merged pull requests:**
-
-- docs: generate the architecture matrix of docs/engines.md [\#995](https://github.com/TigreGotico/phoonnx/pull/995) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.135.1a1](https://github.com/TigreGotico/phoonnx/tree/1.135.1a1) (2026-11-24)
 
