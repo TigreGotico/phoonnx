@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.138.10a9](https://github.com/TigreGotico/phoonnx/tree/1.138.10a9) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a8...1.138.10a9)
+
+**Merged pull requests:**
+
+- test: Shami frontend tests read Shami's own script languages [\#1174](https://github.com/TigreGotico/phoonnx/pull/1174) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.10a8](https://github.com/TigreGotico/phoonnx/tree/1.138.10a8) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.10a7...1.138.10a8)
@@ -358,17 +366,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.2a1...1.136.3a1)
 
-**Merged pull requests:**
-
-- fix: features.json keeps float and in-vector tone features of its source [\#1023](https://github.com/TigreGotico/phoonnx/pull/1023) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.136.2a1](https://github.com/TigreGotico/phoonnx/tree/1.136.2a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.136.1a1...1.136.2a1)
-
-**Merged pull requests:**
-
-- fix: --segment-map without phonematcher stops before any utterance [\#1024](https://github.com/TigreGotico/phoonnx/pull/1024) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.136.1a1](https://github.com/TigreGotico/phoonnx/tree/1.136.1a1) (2026-11-24)
 
