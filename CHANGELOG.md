@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.138.9a1](https://github.com/TigreGotico/phoonnx/tree/1.138.9a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.8a1...1.138.9a1)
+
+## [1.138.8a1](https://github.com/TigreGotico/phoonnx/tree/1.138.8a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.7a2...1.138.8a1)
+
+**Merged pull requests:**
+
+- fix: point the two Kabyle o2i voices at native phoonnx.json configs [\#1130](https://github.com/TigreGotico/phoonnx/pull/1130) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix: point the 42 chatterbox voices at native phoonnx.json configs [\#1128](https://github.com/TigreGotico/phoonnx/pull/1128) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.7a2](https://github.com/TigreGotico/phoonnx/tree/1.138.7a2) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.7a1...1.138.7a2)
+
+**Merged pull requests:**
+
+- docs: show the current index pins in five examples [\#1114](https://github.com/TigreGotico/phoonnx/pull/1114) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.7a1](https://github.com/TigreGotico/phoonnx/tree/1.138.7a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.6a1...1.138.7a1)
+
+**Merged pull requests:**
+
+- fix: point 172 Piper voices at configs that split ç as Piper does [\#1120](https://github.com/TigreGotico/phoonnx/pull/1120) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.138.6a1](https://github.com/TigreGotico/phoonnx/tree/1.138.6a1) (2026-11-25)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.5a1...1.138.6a1)
+
+**Merged pull requests:**
+
+- fix: load every index voice through the VoiceConfig of its entry [\#1121](https://github.com/TigreGotico/phoonnx/pull/1121) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.138.5a1](https://github.com/TigreGotico/phoonnx/tree/1.138.5a1) (2026-11-25)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.138.4a3...1.138.5a1)
@@ -329,10 +366,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.135.0a1...1.135.0a2)
 
-**Merged pull requests:**
-
-- refactor: make model\_manager shorter and easier to read [\#991](https://github.com/TigreGotico/phoonnx/pull/991) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.135.0a1](https://github.com/TigreGotico/phoonnx/tree/1.135.0a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a2...1.135.0a1)
@@ -340,10 +373,6 @@
 ## [1.134.0a2](https://github.com/TigreGotico/phoonnx/tree/1.134.0a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.134.0a1...1.134.0a2)
-
-**Merged pull requests:**
-
-- docs: state how tone numerals map to Chao levels [\#987](https://github.com/TigreGotico/phoonnx/pull/987) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.134.0a1](https://github.com/TigreGotico/phoonnx/tree/1.134.0a1) (2026-11-24)
 
@@ -353,17 +382,9 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.1a1...1.133.2a1)
 
-**Merged pull requests:**
-
-- fix\(train\): a run of tone numerals is one segment [\#983](https://github.com/TigreGotico/phoonnx/pull/983) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.133.1a1](https://github.com/TigreGotico/phoonnx/tree/1.133.1a1) (2026-11-23)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.133.0a1...1.133.1a1)
-
-**Merged pull requests:**
-
-- fix: align the features.json generator with its format [\#982](https://github.com/TigreGotico/phoonnx/pull/982) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.133.0a1](https://github.com/TigreGotico/phoonnx/tree/1.133.0a1) (2026-11-23)
 

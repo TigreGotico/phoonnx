@@ -62,7 +62,7 @@ $ phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_unicode
 Attempting to download files for: OpenVoiceOS/phoonnx_pt-PT_miro_unicode (pt-PT)
 -> Downloading ONNX model and side files (this may take a while)...
 
-Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--phoonnx_pt-PT_miro_unicode/snapshots/eb9a020da900534d7232f11a6cf5d1ae1c545219
+Download complete. Files saved to: ~/.cache/huggingface/hub/models--Phoonnx--phoonnx_pt-PT_miro_unicode/snapshots/aec14a0428e6b67a47eb54b2baa4a604d42c0063
 ```
 
 The download is 63 MB. The Hugging Face client can also print a warning about

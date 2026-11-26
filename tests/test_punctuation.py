@@ -244,6 +244,7 @@ class TestModelManagerKeepsTheFlag:
         config = piper_config(phoneme_type="vosk", espeak={"voice": "ru"}, keep_punctuation=True)
         with patch.object(model_manager.TTSModelInfo, "download_config", return_value=config), \
                 patch.object(model_manager.TTSModelInfo, "download_dictionary", return_value=Path("dict.txt")), \
+                patch.object(model_manager.TTSModelInfo, "hub_path", return_value=Path("config.json")), \
                 patch.object(model_manager.TTSModelInfo, "download_model", return_value=Path("model.onnx")), \
                 patch.object(model_manager.TTSModelInfo, "engine_params", return_value={}), \
                 patch.object(model_manager, "make_session", return_value=MagicMock()), \

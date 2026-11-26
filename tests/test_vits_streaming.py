@@ -316,7 +316,8 @@ def test_decoder_keeps_its_threads_when_loaded_from_the_ort_cache(tmp_path, monk
         assert (options.intra_op_num_threads, options.inter_op_num_threads) == (3, 1)
 
 
-def test_a_relative_decoder_path_is_read_from_the_config_folder(tmp_path, monkeypatch):
+@pytest.mark.parametrize("engine", [None, "vits", "piper"])
+def test_a_relative_decoder_path_is_read_from_the_config_folder(tmp_path, monkeypatch, engine):
     onnx = pytest.importorskip("onnx")
     import json
     from onnx import TensorProto, helper
@@ -334,6 +335,8 @@ def test_a_relative_decoder_path_is_read_from_the_config_folder(tmp_path, monkey
     config = {"streaming": True, "engine_params": {"decoder_path": "decoder.onnx"},
               "phoneme_type": "espeak", "alphabet": "ipa", "lang_code": "en-US",
               "audio": {"sample_rate": 22050}, "phoneme_id_map": DEFAULT_IPA_PHONEME_ID_MAP}
+    if engine:
+        config["engine"] = engine
     (voice_dir / "model.onnx.json").write_text(json.dumps(config), encoding="utf-8")
     monkeypatch.chdir(elsewhere)
     voice = TTSVoice.load(str(voice_dir / "model.onnx"))
