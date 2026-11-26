@@ -72,6 +72,19 @@ class TestCheckLangSupported(unittest.TestCase):
         with self.assertRaises(UnsupportedVoiceLanguage):
             check_lang_supported("und-voice", "und", PhonemeType.ORTHOGRAPHY2IPA)
 
+    def test_und_mapped_to_another_language_is_rejected(self):
+        # a fuzzy matcher maps "und" to some language: the voice would speak a language it never named
+        backend = type("FuzzyBackend", (), {"get_lang": classmethod(lambda cls, lang: "en")})
+        with mock.patch("scriptconv.phonemizers.registry.get_phonemizer_class", return_value=backend):
+            with self.assertRaises(UnsupportedVoiceLanguage):
+                check_lang_supported("und-voice", "und", PhonemeType.ORTHOGRAPHY2IPA)
+
+    def test_und_kept_by_a_passthrough_loads(self):
+        # a passthrough returns the tag unchanged: it reads any language, "und" included
+        backend = type("Passthrough", (), {"get_lang": classmethod(lambda cls, lang: lang)})
+        with mock.patch("scriptconv.phonemizers.registry.get_phonemizer_class", return_value=backend):
+            check_lang_supported("und-voice", "und", PhonemeType.UNICODE)
+
     def test_real_unsupported_lang_code_still_raises(self):
         # A real code the backend does not support is rejected with the
         # same typed error as "und".
