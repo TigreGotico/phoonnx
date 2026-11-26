@@ -5,6 +5,7 @@
    "O comboio parte às 8 horas, não te atrases!",
    "Comprei 3 livros na feira."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/phoonnx_pt-PT_miro_unicode",
@@ -13,7 +14,6 @@
   "phoneme_type": "unicode",
   "alphabet": "unicode",
   "asr_model": "OpenVoiceOS/yuriyvnv-parakeet-tdt-0.6b-pt-onnx",
-  "asr_quantization": null,
   "asr_floor": 0.021,
   "manual": {
    "wer": [
@@ -21,7 +21,11 @@
     0.0
    ],
    "mean": 0.111,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "fcf50e6e52f1fbe7",
+    "ddea8507086a6d22"
+   ]
   },
   "index": {
    "wer": [
@@ -29,7 +33,11 @@
     0.0
    ],
    "mean": 0.111,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "fcf50e6e52f1fbe7",
+    "ddea8507086a6d22"
+   ]
   },
   "plugin": {
    "wer": [
@@ -37,7 +45,11 @@
     0.0
    ],
    "mean": 0.111,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "fcf50e6e52f1fbe7",
+    "ddea8507086a6d22"
+   ]
   }
  },
  {
@@ -46,6 +58,7 @@
    "O ônibus chega em 5 minutos, fique tranquilo.",
    "Tenho 2 irmãos e uma irmã."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/pipertts_pt-BR_miro",
@@ -54,31 +67,42 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/yuriyvnv-parakeet-tdt-0.6b-pt-onnx",
-  "asr_quantization": null,
   "asr_floor": 0.021,
   "manual": {
    "wer": [
-    0.125,
+    0.0,
     0.0
    ],
-   "mean": 0.062,
-   "class": "PASS"
+   "mean": 0.0,
+   "class": "PASS",
+   "audio_sha256": [
+    "0edfca60de4f7e69",
+    "c2be124fc7dd77d4"
+   ]
   },
   "index": {
    "wer": [
-    0.125,
+    0.0,
     0.0
    ],
-   "mean": 0.062,
-   "class": "PASS"
+   "mean": 0.0,
+   "class": "PASS",
+   "audio_sha256": [
+    "0edfca60de4f7e69",
+    "c2be124fc7dd77d4"
+   ]
   },
   "plugin": {
    "wer": [
-    0.125,
+    0.0,
     0.0
    ],
-   "mean": 0.062,
-   "class": "PASS"
+   "mean": 0.0,
+   "class": "PASS",
+   "audio_sha256": [
+    "0edfca60de4f7e69",
+    "c2be124fc7dd77d4"
+   ]
   }
  },
  {
@@ -87,6 +111,7 @@
    "El bus sale a las 7, ¿vienes conmigo?",
    "Compré 4 mangos en la plaza."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/phoonnx_es-CO_miro_espeak",
@@ -95,7 +120,6 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/stt_es_fastconformer_hybrid_large_pc_onnx",
-  "asr_quantization": null,
   "asr_floor": 0.08,
   "manual": {
    "wer": [
@@ -103,7 +127,11 @@
     0.0
    ],
    "mean": 0.125,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "5f2a29b702da94fb",
+    "d397b23967761c3a"
+   ]
   },
   "index": {
    "wer": [
@@ -111,7 +139,11 @@
     0.0
    ],
    "mean": 0.125,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "5f2a29b702da94fb",
+    "d397b23967761c3a"
+   ]
   },
   "plugin": {
    "wer": [
@@ -119,7 +151,11 @@
     0.0
    ],
    "mean": 0.125,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "5f2a29b702da94fb",
+    "d397b23967761c3a"
+   ]
   }
  },
  {
@@ -128,6 +164,7 @@
    "Le train part à 9 heures, ne sois pas en retard !",
    "J'ai acheté 3 baguettes ce matin."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/pipertts_fr-FR_miro",
@@ -136,7 +173,6 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/stt_fr_fastconformer_hybrid_large_pc_onnx",
-  "asr_quantization": null,
   "asr_floor": 0.032,
   "manual": {
    "wer": [
@@ -144,7 +180,11 @@
     0.0
    ],
    "mean": 0.091,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "cf0b7fcfd867184f",
+    "a8cf44b00f4c072b"
+   ]
   },
   "index": {
    "wer": [
@@ -152,7 +192,11 @@
     0.0
    ],
    "mean": 0.091,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "cf0b7fcfd867184f",
+    "a8cf44b00f4c072b"
+   ]
   },
   "plugin": {
    "wer": [
@@ -160,7 +204,11 @@
     0.0
    ],
    "mean": 0.091,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "cf0b7fcfd867184f",
+    "a8cf44b00f4c072b"
+   ]
   }
  },
  {
@@ -169,6 +217,7 @@
    "Il treno parte alle 6, non fare tardi!",
    "Ho comprato 2 chili di mele."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/pipertts_it-IT_miro",
@@ -177,7 +226,6 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/stt_it_fastconformer_hybrid_large_pc_onnx",
-  "asr_quantization": null,
   "asr_floor": 0.016,
   "manual": {
    "wer": [
@@ -185,7 +233,11 @@
     0.0
    ],
    "mean": 0.0,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "2af54b4c5c0af483",
+    "077c0e918e33c087"
+   ]
   },
   "index": {
    "wer": [
@@ -193,7 +245,11 @@
     0.0
    ],
    "mean": 0.0,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "2af54b4c5c0af483",
+    "077c0e918e33c087"
+   ]
   },
   "plugin": {
    "wer": [
@@ -201,7 +257,11 @@
     0.0
    ],
    "mean": 0.0,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "2af54b4c5c0af483",
+    "077c0e918e33c087"
+   ]
   }
  },
  {
@@ -210,6 +270,7 @@
    "Der Zug fährt um 8 Uhr ab, sei pünktlich!",
    "Ich habe 3 Bücher gekauft."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/pipertts_de-DE_miro",
@@ -218,7 +279,6 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/stt_de_fastconformer_hybrid_large_pc_onnx",
-  "asr_quantization": null,
   "asr_floor": 0.075,
   "manual": {
    "wer": [
@@ -226,7 +286,11 @@
     0.0
    ],
    "mean": 0.056,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "2cc928c5fd65b046",
+    "ea7ac6651da88135"
+   ]
   },
   "index": {
    "wer": [
@@ -234,7 +298,11 @@
     0.0
    ],
    "mean": 0.056,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "2cc928c5fd65b046",
+    "ea7ac6651da88135"
+   ]
   },
   "plugin": {
    "wer": [
@@ -242,7 +310,11 @@
     0.0
    ],
    "mean": 0.056,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "2cc928c5fd65b046",
+    "ea7ac6651da88135"
+   ]
   }
  },
  {
@@ -251,6 +323,7 @@
    "De trein vertrekt om 7 uur, kom niet te laat!",
    "Ik heb 4 appels gekocht."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/pipertts_nl-NL_miro",
@@ -259,7 +332,6 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/yuriyvnv-parakeet-tdt-0.6b-nl-onnx",
-  "asr_quantization": null,
   "asr_floor": 0.067,
   "manual": {
    "wer": [
@@ -267,7 +339,11 @@
     0.0
    ],
    "mean": 0.0,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "457afb53ec51eafc",
+    "927620075134dbbd"
+   ]
   },
   "index": {
    "wer": [
@@ -275,7 +351,11 @@
     0.0
    ],
    "mean": 0.0,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "457afb53ec51eafc",
+    "927620075134dbbd"
+   ]
   },
   "plugin": {
    "wer": [
@@ -283,7 +363,11 @@
     0.0
    ],
    "mean": 0.0,
-   "class": "PASS"
+   "class": "PASS",
+   "audio_sha256": [
+    "457afb53ec51eafc",
+    "927620075134dbbd"
+   ]
   }
  },
  {
@@ -292,6 +376,7 @@
    "Toget kører klokken 8, kom ikke for sent!",
    "Jeg har købt 3 bøger."
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
@@ -300,33 +385,44 @@
   "phoneme_type": "espeak",
   "alphabet": "ipa",
   "asr_model": "nemo-parakeet-tdt-0.6b-v3",
-  "asr_quantization": "int8",
-  "asr_floor": 0.341,
+  "asr_floor": 0.246,
   "manual": {
    "wer": [
-    0.75,
+    0.375,
     1.0
    ],
-   "mean": 0.875,
+   "mean": 0.688,
    "class": "FAIL",
+   "audio_sha256": [
+    "8e36f9f6a98e8d21",
+    "7acd5ae350982263"
+   ],
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
   },
   "index": {
    "wer": [
-    0.75,
+    0.375,
     1.0
    ],
-   "mean": 0.875,
+   "mean": 0.688,
    "class": "FAIL",
+   "audio_sha256": [
+    "8e36f9f6a98e8d21",
+    "7acd5ae350982263"
+   ],
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
   },
   "plugin": {
    "wer": [
-    0.75,
+    0.375,
     1.0
    ],
-   "mean": 0.875,
+   "mean": 0.688,
    "class": "FAIL",
+   "audio_sha256": [
+    "8e36f9f6a98e8d21",
+    "7acd5ae350982263"
+   ],
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
   }
  },
@@ -336,6 +432,7 @@
    "Azul, ɣriɣ 2 n yedlisen ass-a.",
    "Ad d-uɣaleɣ ɣef 5, ur ttɛeṭṭil ara!"
   ],
+  "note": "sentences not checked by a native speaker",
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "OpenVoiceOS/phoonnx_kab-DZ_miro_o2i",
@@ -344,31 +441,42 @@
   "phoneme_type": "orthography2ipa",
   "alphabet": "ipa",
   "asr_model": "OpenVoiceOS/nvidia-kab-conformer-transducer-large-onnx",
-  "asr_quantization": null,
   "asr_floor": 0.1,
   "manual": {
    "wer": [
-    0.571,
-    0.5
+    0.286,
+    0.375
    ],
-   "mean": 0.535,
-   "class": "FAIL"
+   "mean": 0.331,
+   "class": "PASS",
+   "audio_sha256": [
+    "4b27fda9a6dc3ccf",
+    "e7ecb47b693ac91f"
+   ]
   },
   "index": {
    "wer": [
-    0.571,
-    0.5
+    0.286,
+    0.375
    ],
-   "mean": 0.535,
-   "class": "FAIL"
+   "mean": 0.331,
+   "class": "PASS",
+   "audio_sha256": [
+    "4b27fda9a6dc3ccf",
+    "e7ecb47b693ac91f"
+   ]
   },
   "plugin": {
    "wer": [
-    0.571,
-    0.5
+    0.286,
+    0.375
    ],
-   "mean": 0.535,
-   "class": "FAIL"
+   "mean": 0.331,
+   "class": "PASS",
+   "audio_sha256": [
+    "4b27fda9a6dc3ccf",
+    "e7ecb47b693ac91f"
+   ]
   }
  },
  {
@@ -377,6 +485,7 @@
    "मेरे पास 3 किताबें हैं।",
    "ट्रेन 5 बजे आएगी, देर मत करना!"
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "facebook/mms-tts-hin-Hindi",
@@ -385,31 +494,42 @@
   "phoneme_type": "graphemes",
   "alphabet": "unicode",
   "asr_model": "OpenVoiceOS/ai4bharat-indicconformer-hi-onnx",
-  "asr_quantization": null,
   "asr_floor": 0.021,
   "manual": {
    "wer": [
     0.0,
-    0.286
+    0.0
    ],
-   "mean": 0.143,
-   "class": "PASS"
+   "mean": 0.0,
+   "class": "PASS",
+   "audio_sha256": [
+    "3eb366c9f7c1f19e",
+    "0e2172931c8bbd25"
+   ]
   },
   "index": {
    "wer": [
     0.0,
-    0.286
+    0.0
    ],
-   "mean": 0.143,
-   "class": "PASS"
+   "mean": 0.0,
+   "class": "PASS",
+   "audio_sha256": [
+    "3eb366c9f7c1f19e",
+    "0e2172931c8bbd25"
+   ]
   },
   "plugin": {
    "wer": [
     0.0,
-    0.286
+    0.0
    ],
-   "mean": 0.143,
-   "class": "PASS"
+   "mean": 0.0,
+   "class": "PASS",
+   "audio_sha256": [
+    "3eb366c9f7c1f19e",
+    "0e2172931c8bbd25"
+   ]
   }
  },
  {
@@ -418,6 +538,7 @@
    "আমার 2 ভাই আছে।",
    "ট্রেন 5 টায় আসবে, দেরি কোরো না!"
   ],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": "facebook/mms-tts-ben-Bengali",
@@ -426,39 +547,51 @@
   "phoneme_type": "graphemes",
   "alphabet": "unicode",
   "asr_model": "OpenVoiceOS/ai4bharat-indicconformer-bn-onnx",
-  "asr_quantization": null,
   "asr_floor": 0.153,
   "manual": {
    "wer": [
     0.25,
-    0.857
+    1.0
    ],
-   "mean": 0.553,
+   "mean": 0.625,
    "class": "FAIL",
+   "audio_sha256": [
+    "a997c0c4385c9ff5",
+    "5dc097d668b9b8b6"
+   ],
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
   },
   "index": {
    "wer": [
     0.25,
-    0.857
+    1.0
    ],
-   "mean": 0.553,
+   "mean": 0.625,
    "class": "FAIL",
+   "audio_sha256": [
+    "a997c0c4385c9ff5",
+    "5dc097d668b9b8b6"
+   ],
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
   },
   "plugin": {
    "wer": [
     0.25,
-    0.857
+    1.0
    ],
-   "mean": 0.553,
+   "mean": 0.625,
    "class": "FAIL",
+   "audio_sha256": [
+    "a997c0c4385c9ff5",
+    "5dc097d668b9b8b6"
+   ],
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
   }
  },
  {
   "lang": "mwr",
   "sentences": [],
+  "note": null,
   "phoonnx": "1.139.0a1",
   "text2spoken": "0.0.2a158",
   "voice_id": null,

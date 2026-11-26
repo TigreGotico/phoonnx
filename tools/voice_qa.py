@@ -6,8 +6,8 @@ speaks the fixed sentences through three load paths: manual (``TTSVoice.load`` o
 downloaded files), index (``TTSModelInfo.load``) and plugin (``PhoonnxTTSPlugin.get_tts``).
 The onnx-asr model that the ovos-stt-plugin-onnx-asr registry names for the language
 transcribes each WAV. The same model transcribes two reference clips of real speech
-first; that WER is the ASR floor. A floor above the threshold makes every path
-ASR-UNVERIFIED, because then the WER of the voice tells nothing.
+first; that WER is the ASR floor. A floor above 0.25 makes every path
+ASR-UNVERIFIED, with no WER, because then the WER of the voice tells nothing.
 
 WER: text2spoken reads the digits of the reference, then both sides are lower-cased,
 stripped of punctuation and combining marks (``voice_sweep.normalise``).
@@ -18,6 +18,7 @@ Each run replaces the records of the languages it ran and keeps the others.
 CI does not run this script: it downloads voices and ASR models.
 """
 import argparse
+import hashlib
 import io
 import json
 import sys
@@ -54,6 +55,7 @@ REFERENCE = {"pt-PT": "pt_br", "pt-BR": "pt_br", "es-CO": "es_419", "fr-FR": "fr
              "it-IT": "it_it", "de-DE": "de_de", "nl-NL": "nl_nl", "da-DK": "da_dk",
              "hi-IN": "hi_in", "bn-IN": "bn_in", "kab": "boffire/kabyle-ljspeech-22khz"}
 LOW_RESOURCE = {"kab", "hi-IN", "bn-IN"}
+NOTES = {"kab": "sentences not checked by a native speaker"}
 ISSUES = {"bn-IN": "https://github.com/TigreGotico/phoonnx/issues/1182",
           "da-DK": "https://github.com/TigreGotico/phoonnx/issues/1186"}
 PATHS = ("manual", "index", "plugin")
@@ -82,21 +84,23 @@ def reference_clips(lang: str, n: int = 2) -> list:
 
 
 class Asr:
-    def __init__(self, lang: str):
+    """The registry model of the language, loaded in fp32."""
+
+    def __init__(self, lang: str, scratch: Path):
         from ovos_stt_plugin_onnxasr import OnnxASR
         from ovos_stt_plugin_onnxasr.defaults import resolve_model
         self.lang = lang
         self.model = resolve_model(lang, {})
-        self.quantization = None
         self.stt = None
         if self.model:
             import onnx_asr.utils
             try:
                 self.stt = OnnxASR(config={"lang": lang, "model": self.model})
             except onnx_asr.utils.ModelFileNotFoundError:
-                # A plugin data folder that holds only the int8 files of the model.
-                self.quantization = "int8"
-                self.stt = OnnxASR(config={"lang": lang, "model": self.model, "quantization": "int8"})
+                # The plugin data folder holds other files of the model (an int8 copy):
+                # download the fp32 files to the scratch folder.
+                self.stt = OnnxASR(config={"lang": lang, "model": self.model,
+                                           "model_dir": str(scratch / "asr")})
 
     def transcribe(self, audio, rate: int) -> str:
         from ovos_plugin_manager.utils.audio import AudioData
@@ -115,8 +119,12 @@ def score(asr: Asr, lang: str, audio, rate: int, text: str) -> float:
     return round(wer(normalise(text, lang), normalise(asr.transcribe(audio, rate), lang)), 3)
 
 
+#: An ASR floor above this makes the WER of a voice meaningless.
+MAX_FLOOR = 0.25
+
+
 def classify(wers: list, lang: str, floor) -> str:
-    if floor is None or floor > threshold(lang):
+    if floor is None or floor > MAX_FLOOR:
         return "ASR-UNVERIFIED"
     return "PASS" if sum(wers) / len(wers) <= threshold(lang) else "FAIL"
 
@@ -150,15 +158,18 @@ def run_path(name: str, info, lang: str, sentences: list, asr: Asr, floor, scrat
         return {"class": "ENV-MISSING", "error": f"{type(error).__name__}: {error}"[:200]}
     except Exception as error:
         return {"class": "FAIL", "error": f"{type(error).__name__}: {error}"[:200]}
+    sha = [hashlib.sha256(wav.read_bytes()).hexdigest()[:16] for wav in wavs]
+    if floor is None or floor > MAX_FLOOR:
+        return {"class": "ASR-UNVERIFIED", "audio_sha256": sha}
     wers = [score(asr, lang, *sf.read(str(wav), dtype="float32"), text)
             for wav, text in zip(wavs, sentences)]
     mean = round(sum(wers) / len(wers), 3)
-    return {"wer": wers, "mean": mean, "class": classify(wers, lang, floor)}
+    return {"wer": wers, "mean": mean, "class": classify(wers, lang, floor), "audio_sha256": sha}
 
 
 def qa(lang: str, scratch: Path) -> dict:
     from phoonnx.opm import PhoonnxTTSPlugin
-    record = {"lang": lang, "sentences": SENTENCES[lang],
+    record = {"lang": lang, "sentences": SENTENCES[lang], "note": NOTES.get(lang),
               "phoonnx": version("phoonnx"), "text2spoken": version("text2spoken")}
     try:
         info = PhoonnxTTSPlugin({"lang": lang}).get_default_voice(lang)
@@ -170,9 +181,8 @@ def qa(lang: str, scratch: Path) -> dict:
                   alphabet=cfg.alphabet and cfg.alphabet.value)
     print(f"{lang}: {info.voice_id} {record['engine']} {cfg.lang_code} "
           f"{record['phoneme_type']} {record['alphabet']}", flush=True)
-    asr = Asr(lang)
+    asr = Asr(lang, scratch)
     record["asr_model"] = asr.model
-    record["asr_quantization"] = asr.quantization
     floor = None
     if asr.model and lang in REFERENCE:
         clips = reference_clips(lang)

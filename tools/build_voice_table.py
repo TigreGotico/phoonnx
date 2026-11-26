@@ -25,13 +25,13 @@ def cell(result: dict) -> str:
 
 def row(record: dict) -> str:
     if record.get("class") == "NO-VOICE":
-        cells = [record["lang"], *["NO-VOICE"] * 8]
+        cells = [record["lang"], *["NO-VOICE"] * 8, ""]
     else:
         floor = "ASR-UNVERIFIED" if record["asr_floor"] is None else f"{record['asr_floor']:.2f}"
         cells = [record["lang"], f"`{record['voice_id']}`", record["engine"],
                  f"{record['phoneme_type']} / {record['alphabet']}",
                  f"`{record['asr_model']}`" if record["asr_model"] else "ASR-UNVERIFIED", floor,
-                 *(cell(record[name]) for name in PATHS)]
+                 *(cell(record[name]) for name in PATHS), record["note"] or ""]
     return "| " + " | ".join(cells) + " |"
 
 
@@ -58,10 +58,10 @@ def render(records: list) -> str:
         "The WER of each language comes from its own onnx-asr model, the one that the "
         "ovos-stt-plugin-onnx-asr registry names. The ASR floor is the WER of that model on two "
         "clips of real speech. A WER of 0.35 or less passes, and 0.5 or less for kab, hi-IN and bn-IN. "
-        "When the floor is above that limit, the cell is ASR-UNVERIFIED.",
+        "When the floor is above 0.25, the cell is ASR-UNVERIFIED and gives no WER.",
         "",
-        "| Language | Voice | Engine | Phonemes / alphabet | ASR model | ASR floor | Manual | Index | Plugin |",
-        "| :--- | :--- | :--- | :--- | :--- | ---: | :--- | :--- | :--- |",
+        "| Language | Voice | Engine | Phonemes / alphabet | ASR model | ASR floor | Manual | Index | Plugin | Note |",
+        "| :--- | :--- | :--- | :--- | :--- | ---: | :--- | :--- | :--- | :--- |",
         *(row(r) for r in records),
         "",
         "---",
