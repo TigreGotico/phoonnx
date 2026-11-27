@@ -224,8 +224,8 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
         if self.codec_decode is None:
             self.codec_decode = sess("codec_decode_path")
         if self.sp is None and ep.get("sp_model_path"):
-            import sentencepiece as spm
-            self.sp = spm.SentencePieceProcessor(model_file=str(ep["sp_model_path"]))
+            from phoonnx._sentencepiece import SentencePieceProcessor
+            self.sp = SentencePieceProcessor(str(ep["sp_model_path"]))
         if self.local_cached_step is not None:
             # local KV-cache geometry comes from the graph itself, not a hardcoded map
             for i in self.local_cached_step.get_inputs():
@@ -255,7 +255,7 @@ class MossTTSNanoAdapter(BaseOnnxAdapter):
         return self._chunk(text, max(1, budget))
 
     def _encode(self, text: str) -> List[int]:
-        return [int(i) for i in self.sp.encode(text, out_type=int)]
+        return self.sp.Encode(text)
 
     def _chunk(self, text: str, budget: int) -> List[List[int]]:
         """Pack whole sentences into chunks of at most ``budget`` tokens.

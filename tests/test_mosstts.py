@@ -5,6 +5,8 @@ exercised here against fake sessions that record their feeds — the two-level
 (global step -> local frame) protocol, the KV-cache threading and the safety cap are all
 observable without the 700 MB of real weights.
 """
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -111,7 +113,7 @@ def _wire(adapter, *, frames_before_stop=3, decoded_seconds=1.0):
 class _FakeSp:
     """SentencePiece stand-in: one token per character."""
 
-    def encode(self, text, out_type=int):
+    def Encode(self, text):
         return [ord(c) for c in text]
 
 
@@ -202,31 +204,22 @@ ZH_SENTENCES = ["我有三本书。", "你有几本？", "太好了！"]
 
 
 @pytest.fixture(scope="module")
-def spm_adapter(tmp_path_factory):
-    """An adapter with a small SentencePiece model: add_dummy_prefix on, as the real one."""
-    spm = pytest.importorskip("sentencepiece")
-    tmp = tmp_path_factory.mktemp("spm")
-    corpus = tmp / "corpus.txt"
-    corpus.write_text("\n".join(
-        ZH_SENTENCES + ["我有三本书你有几本太好了", "我有书。", "你有三本。", "太好了。",
-                        "Hello there. How are you?", "One two three four five six.",
-                        "Fine thanks and you? Good morning to all."]) + "\n", encoding="utf-8")
-    spm.SentencePieceTrainer.train(
-        input=str(corpus), model_prefix=str(tmp / "m"), vocab_size=60, model_type="unigram",
-        add_dummy_prefix=True, hard_vocab_limit=False)
+def spm_adapter():
+    """An adapter with a small BPE SentencePiece model: add_dummy_prefix and nmt_nfkc, as the real one."""
+    from phoonnx._sentencepiece import SentencePieceProcessor
     ad = MossTTSNanoAdapter()
-    ad.sp = spm.SentencePieceProcessor(model_file=str(tmp / "m.model"))
+    ad.sp = SentencePieceProcessor(str(Path(__file__).parent / "fixtures" / "sp_bpe_nfkc.model"))
     return ad
 
 
 def _space_id(ad):
-    return ad.sp.piece_to_id("\u2581")
+    return ad.sp.PieceToId("\u2581")
 
 
 def test_chunking_chinese_has_no_space_token_between_sentences(spm_adapter):
     chunks = spm_adapter._chunk(ZH, 1000)
     assert chunks == [spm_adapter._encode(ZH)]
-    pieces = spm_adapter.sp.id_to_piece(chunks[0])
+    pieces = [spm_adapter.sp.IdToPiece(i) for i in chunks[0]]
     assert not any(p == "\u2581" for p in pieces[1:])
     assert pieces[0].startswith("\u2581")
 

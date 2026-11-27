@@ -10,6 +10,9 @@ too. The example writes out the text-to-id step that phoonnx runs for the repo's
 ``config.json`` (phoneme_id_map, pad, blanks, BOS/EOS), so the reader sees what
 the model reads.
 
+The MOSS-TTS-Nano example reads its SentencePiece ``tokenizer.model`` with the
+phoonnx reader, so it also needs the phoonnx package.
+
 :func:`standalone_example` renders the example. Both card renderers import it:
 ``model_card.py`` from this directory, and the split-repo renderer by adding this
 directory to ``sys.path``. The example names the model's feeds by the graph's real
@@ -1847,13 +1850,13 @@ def _mosstts(config: Dict[str, Any], files: Dict[str, Any], *, repo_id: str, tex
             raise UnsupportedExample(f"MOSS-TTS-Nano graph {files[key]['file']} has other inputs or outputs")
     sentence = json.dumps(text, ensure_ascii=False) if text else f'"..."  # a sentence in {config.get("lang") or "the voice language"}'
     weights = ",\n             ".join(f'"{files[k]["file"]}"' for k in _MOSSTTS_FILES[6:])
-    return f'''# pip install onnxruntime numpy huggingface_hub
-import struct
+    return f'''# pip install onnxruntime numpy huggingface_hub phoonnx
 import wave
 
 import numpy as np
 import onnxruntime
 from huggingface_hub import hf_hub_download
+from phoonnx._sentencepiece import SentencePieceProcessor
 
 repo = "{repo_id}"
 text = {sentence}
@@ -1869,62 +1872,8 @@ prefill, decode_step, local_frame, codec_encode, codec_decode = (onnxruntime.Inf
     {_hub(files["codec_decode_path"], repo_id)}))
 
 
-def varint(data, i):
-    value = shift = 0
-    while True:
-        value, shift, i = value | (data[i] & 127) << shift, shift + 7, i + 1
-        if data[i - 1] < 128:
-            return value, i
-
-
-def fields(data):  # the (field number, value) pairs of a protobuf message
-    i = 0
-    while i < len(data):
-        key, i = varint(data, i)
-        if key & 7 == 0:
-            value, i = varint(data, i)
-        elif key & 7 == 5:
-            value, i = data[i:i + 4], i + 4
-        else:
-            size, i = varint(data, i)
-            value, i = data[i:i + size], i + size
-        yield key >> 3, value
-
-
-# the SentencePiece tokenizer (BPE with byte fallback), read from tokenizer.model
-pieces, charsmap = {{}}, b""
-for number, value in fields(open({_hub(files["sp_model_path"], repo_id)}, "rb").read()):
-    if number == 1:  # a piece: its text and its score
-        piece = dict(fields(value))
-        pieces[piece[1].decode()] = (len(pieces), struct.unpack("<f", piece.get(2, bytes(4)))[0])
-    elif number == 3:  # the nmt_nfkc normaliser, as a double-array trie and its replacement strings
-        charsmap = dict(fields(value))[2]
-size = struct.unpack("<I", charsmap[:4])[0]
-trie, replacements = struct.unpack(f"<{{size // 4}}I", charsmap[4:4 + size]), charsmap[4 + size:]
-data, normalized, i = text.encode(), b"", 0
-while i < len(data):  # replace the longest match of the trie at each place
-    node, match = trie[0] >> 10 << (trie[0] >> 6 & 8), None
-    for j in range(i, len(data)):
-        node ^= data[j]
-        unit = trie[node]
-        if unit & 0x800000FF != data[j]:
-            break
-        node ^= unit >> 10 << (unit >> 6 & 8)
-        if unit >> 8 & 1:
-            match = j + 1, trie[node] & 0x7FFFFFFF
-    if match:
-        normalized, i = normalized + replacements[match[1]:replacements.index(0, match[1])], match[0]
-    else:
-        n = 1 + (data[i] >= 0xC0) + (data[i] >= 0xE0) + (data[i] >= 0xF0)
-        normalized, i = normalized + data[i:i + n], i + n
-symbols = list("▁" + "▁".join(normalized.decode().split()))
-while True:  # merge the adjacent pair whose piece has the best score, leftmost first
-    pairs = [(pieces[a + b][1], -k) for k, (a, b) in enumerate(zip(symbols, symbols[1:])) if a + b in pieces]
-    if not pairs:
-        break
-    k = -max(pairs)[1]
-    symbols[k:k + 2] = [symbols[k] + symbols[k + 1]]
-ids = [x for s in symbols for x in ([pieces[s][0]] if s in pieces else [pieces[f"<0x{{b:02X}}>"][0] for b in s.encode()])]
+# the SentencePiece tokenizer (BPE with byte fallback and the nmt_nfkc normaliser)
+ids = SentencePieceProcessor({_hub(files["sp_model_path"], repo_id)}).Encode(text)
 
 with wave.open(reference) as wav:
     rate, channels = wav.getframerate(), wav.getnchannels()

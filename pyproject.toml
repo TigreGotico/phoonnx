@@ -69,8 +69,6 @@ test = [
     "pytorch-lightning>=2.0",
     "ovos-plugin-manager>=2.2.0",
     "pycotovia>=0.4.0a1",
-    # MOSS-TTS-Nano ships a SentencePiece text tokenizer
-    "sentencepiece",
     "ahotts-g2p>=0.1.0",
     # scriptconv-copyleft holds the eSpeak, Cotovia, AhoTTS and misaki wrappers,
     # and scriptconv-nonfree the mantoq, Halabi and Iqra wrappers. espyak,
@@ -114,9 +112,6 @@ test = [
     # the reference for tests/test_bpe_reader.py: phoonnx/_bpe.py must give
     # the same ids, because a wrong id makes wrong audio and no error
     "tokenizers",
-    # the reference for tests/test_sentencepiece_reader.py: phoonnx/_sentencepiece.py
-    # must give the same ids
-    "sentencepiece",
     # onnx needs ml_dtypes.float4_e2m1fn (ml_dtypes 0.5), and ml_dtypes 0.5
     # needs numpy>=2.1 on Python 3.13+, so the split follows the [train] numpy markers
     "onnx<1.18; python_version<'3.13'",
@@ -231,7 +226,6 @@ train-fastpitch = []
 train-mixer = []
 # MOSS-TTS-Nano training (phoonnx_train/mosstts/), on top of [train]
 train-mosstts = [
-    "sentencepiece",
     "soundfile",
     "onnx",
 ]
@@ -408,8 +402,6 @@ all = [
     "audioop-lts; python_version >= '3.13'",
     # Indic Parler needs the compiled reader, and the image installs `all`
     "tokenizers",
-    # MOSS-TTS-Nano imports sentencepiece at runtime (phoonnx/engines/mosstts.py)
-    "sentencepiece",
     # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
     # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
     "librosa>=0.9.2,<1.2",
