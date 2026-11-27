@@ -269,7 +269,7 @@ it = ["epitran", "gruut[it]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptcon
 ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a185", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
 ko = ["epitran", "scriptconv[ko]>=0.0.4a185", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
-pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+pt = ["epitran", "scriptconv[o2i]", "tugaphone>=3.6.0a3", "gruut[pt]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
