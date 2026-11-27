@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.1a1](https://github.com/TigreGotico/phoonnx/tree/1.140.1a1) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.0a2...1.140.1a1)
+
+**Merged pull requests:**
+
+- fix: text2spoken floor for Bengali digits [\#1197](https://github.com/TigreGotico/phoonnx/pull/1197) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.140.0a2](https://github.com/TigreGotico/phoonnx/tree/1.140.0a2) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.0a1...1.140.0a2)
@@ -34,7 +42,6 @@
 **Merged pull requests:**
 
 - fix\(deps\): install espeak with the de, es, fr, it, nl and pt extras [\#1185](https://github.com/TigreGotico/phoonnx/pull/1185) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- perf\(supertonic\): optional fixed-shape padding for CUDA \(off by default\) [\#1057](https://github.com/TigreGotico/phoonnx/pull/1057) ([goldyfruit](https://github.com/goldyfruit))
 
 ## [1.139.0a2](https://github.com/TigreGotico/phoonnx/tree/1.139.0a2) (2026-11-26)
 
@@ -337,11 +344,6 @@
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.9a1...1.137.10a1)
 
-**Merged pull requests:**
-
-- fix: refuse a resume without the --jsonl-audio-path of the first run [\#1061](https://github.com/TigreGotico/phoonnx/pull/1061) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: rewrite every cache path under --jsonl-audio-spec-path [\#1060](https://github.com/TigreGotico/phoonnx/pull/1060) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-
 ## [1.137.9a1](https://github.com/TigreGotico/phoonnx/tree/1.137.9a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.8a1...1.137.9a1)
@@ -361,10 +363,6 @@
 ## [1.137.6a1](https://github.com/TigreGotico/phoonnx/tree/1.137.6a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.5a1...1.137.6a1)
-
-**Merged pull requests:**
-
-- fix: preprocess --resume keeps the --jsonl-audio-path base of the first run [\#1055](https://github.com/TigreGotico/phoonnx/pull/1055) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.5a1](https://github.com/TigreGotico/phoonnx/tree/1.137.5a1) (2026-11-24)
 

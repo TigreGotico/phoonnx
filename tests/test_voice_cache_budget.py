@@ -42,7 +42,7 @@ def _plugin(testcase, sizes=None, load_hook=None, **config):
                 load_hook(voice_id)
             return f"model:{voice_id}"
 
-        return MagicMock(load=load,
+        return MagicMock(voice_id=voice_id, load=load,
                          disk_size=MagicMock(
                              return_value=sizes.get(voice_id, 10 * MB)))
 

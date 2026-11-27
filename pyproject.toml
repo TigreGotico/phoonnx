@@ -124,9 +124,6 @@ test = [
     # fallback taken when pydub cannot import its audioop module
     "pydub",
     "audioop-lts; python_version >= '3.13'",
-    # the Pocket TTS card example test runs the engine's adapter, which reads the
-    # voice state with safetensors
-    "safetensors",
 ]
 # splits a monolithic VITS model into a streaming encoder and decoder at load;
 # a pre-split ("+RT") voice streams without it
@@ -137,10 +134,8 @@ espeak = ["scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espy
 matcha = [
     "scipy",
 ]
-# Pocket TTS reads its voice states with safetensors
-pockettts = [
-    "safetensors",
-]
+# Pocket TTS needs nothing extra; phoonnx/_safetensors.py reads its voice states
+pockettts = []
 # OmniVoice trims silence with pydub; without it a numpy RMS trim runs.
 # pydub imports audioop, which Python 3.13 removed and audioop-lts restores.
 omnivoice = ["pydub", "audioop-lts; python_version >= '3.13'"]
@@ -231,7 +226,6 @@ train-fastpitch = []
 train-mixer = []
 # MOSS-TTS-Nano training (phoonnx_train/mosstts/), on top of [train]
 train-mosstts = [
-    "safetensors",
     "soundfile",
     "onnx",
 ]
@@ -269,7 +263,7 @@ it = ["epitran", "gruut[it]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptcon
 ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a185", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
 ko = ["epitran", "scriptconv[ko]>=0.0.4a185", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
-pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+pt = ["epitran", "scriptconv[o2i]", "tugaphone>=3.6.0a3", "gruut[pt]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
@@ -408,8 +402,6 @@ all = [
     "audioop-lts; python_version >= '3.13'",
     # Indic Parler needs the compiled reader, and the image installs `all`
     "tokenizers",
-    # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
-    "safetensors",
     # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
     # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
     "librosa>=0.9.2,<1.2",
