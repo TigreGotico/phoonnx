@@ -28,7 +28,7 @@ from phoonnx.model_manager import TTSModelManager, TTSModelInfo, choose_precisio
 from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
-from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget
+from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget, parse_pinned
 
 __all__ = ["PhoonnxTTSPlugin", "VoiceExceedsMemoryBudget"]
 
@@ -79,7 +79,7 @@ class PhoonnxTTSPlugin(TTS):
                                         threads=self.config.get("onnx_threads")),
             max_loaded_voices=self.config.get("max_loaded_voices"),
             max_loaded_bytes=self.config.get("max_loaded_bytes"),
-            pinned_voices=self.config.get("pinned_voices"),
+            pinned_voices=self._pinned_catalog_ids(self.config.get("pinned_voices")),
             load_wait_timeout=self.config.get("load_wait_timeout"))
         # Cloned cache identities, most recent last. Bounded because the
         # reference that creates one comes from the request.
@@ -98,6 +98,22 @@ class PhoonnxTTSPlugin(TTS):
             self.voice_info = self.get_default_voice(self.lang)
 
         self.voice_cache.preload_pinned()
+
+    def _pinned_catalog_ids(self, pinned) -> List[str]:
+        """The catalog id of each pinned voice, resolved the way :meth:`get_tts` resolves a request.
+
+        ``get_tts`` leases a voice by its catalog id, so a pin written the way a Piper client
+        names the voice (``lessac-medium``) must reach the cache under that id too: under its own
+        spelling it would be a second entry that a request never finds, loading the voice twice.
+        A pin that does not resolve is reported like a pin that fails to load, and left out.
+        """
+        resolved = []
+        for name in parse_pinned(pinned):
+            try:
+                resolved.append(self.get_voice_info(name, self.lang).voice_id)
+            except Exception as e:
+                LOG.error(f"pinned voice '{name}' failed to load: {e}")
+        return resolved
 
     def _cfg_opt(self, default, *keys):
         """
@@ -305,14 +321,17 @@ class PhoonnxTTSPlugin(TTS):
 
         Piper clients (``ovos-tts-plugin-piper``, Home Assistant, ``piper`` itself) name a voice
         ``en_US-lessac-medium`` or ``lessac-medium``; the catalog calls it
-        ``piper/en_US-lessac-medium``. A short name that several languages share (``mls-medium``)
+        ``piper/en_US-lessac-medium``. A speaker suffix (``#3``) is dropped from any of the three
+        spellings. A short name that several languages share (``mls-medium``)
         goes to the one that fits ``lang`` (default: the plugin's language): the same locale, then
         the same language. If none fits it is ambiguous and nothing is chosen.
         """
         name = str(name or "").split("#", 1)[0].strip()      # "name#3" is a Piper speaker suffix
+        voices = self.model_manager.voices
+        if name.startswith("piper/"):                        # "piper/en_US-lessac-medium#3"
+            return name if name in voices else None
         if not name or "/" in name:
             return None
-        voices = self.model_manager.voices
         if f"piper/{name}" in voices:
             return f"piper/{name}"
         candidates = [vid for vid in voices
