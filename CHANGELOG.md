@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.2a3](https://github.com/TigreGotico/phoonnx/tree/1.140.2a3) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a2...1.140.2a3)
+
+**Merged pull requests:**
+
+- chore\(deps\): tugaphone\>=3.6.0a3 in the pt extra [\#1203](https://github.com/TigreGotico/phoonnx/pull/1203) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.140.2a2](https://github.com/TigreGotico/phoonnx/tree/1.140.2a2) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a1...1.140.2a2)
@@ -361,10 +369,6 @@
 ## [1.137.9a1](https://github.com/TigreGotico/phoonnx/tree/1.137.9a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.8a1...1.137.9a1)
-
-**Merged pull requests:**
-
-- fix: a syllabic mark above ŋ bears its tone \(phonematcher \>=3.0.1a1\) [\#1065](https://github.com/TigreGotico/phoonnx/pull/1065) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.8a1](https://github.com/TigreGotico/phoonnx/tree/1.137.8a1) (2026-11-24)
 
