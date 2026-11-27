@@ -76,7 +76,7 @@ class CharTokenizer:
 class CharSentencePiece:
     """SentencePiece's dummy prefix starts each encoded sentence with a word boundary."""
 
-    def encode(self, text, out_type=int):
+    def Encode(self, text):
         return [ord(c) for c in " " + text]
 
 
