@@ -5,8 +5,10 @@ into ids and turn ids back into text. That is a small enough surface to
 implement directly, which keeps a compiled dependency out of the install for
 the seven Pocket TTS voices.
 
-Only what those models actually use is implemented — Unigram vocabularies with
-byte fallback and the ``identity`` normalizer. Anything else raises
+Unigram and BPE vocabularies are implemented, with or without byte fallback,
+and with any compiled normalizer (``identity``, ``nmt_nfkc`` and the other
+precompiled charsmaps). MOSS-TTS-Nano uses a BPE model with ``nmt_nfkc``.
+Anything else raises
 :class:`UnsupportedSentencePieceModel`, so a voice with an exotic
 configuration fails loudly instead of being silently encoded the wrong way. A
 wrong id is worse than a missing package here: it makes plausible but wrong
@@ -15,6 +17,7 @@ audio rather than an error.
 The file is a protobuf ``ModelProto``. It is a flat message, so a few dozen
 lines of varint reading replace the protobuf runtime as well.
 """
+import heapq
 import struct
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -34,6 +37,7 @@ _UNK_PENALTY = 10.0
 # The renamed space. SentencePiece writes a space as U+2581 so that a piece
 # can carry the word boundary that produced it.
 _SPACE = "▁"
+_SPACE_BYTES = _SPACE.encode("utf-8")
 
 # ModelProto.SentencePiece.Type
 _NORMAL, _UNKNOWN, _CONTROL, _USER_DEFINED, _UNUSED, _BYTE = 1, 2, 3, 4, 5, 6
@@ -111,6 +115,14 @@ class SentencePieceProcessor:
         self._byte_fallback = False
         self._byte_ids: Dict[int, int] = {}
         self._add_dummy_prefix = True
+        self._remove_extra_whitespaces = True  # the protobuf default
+        self._model_type = 1
+        # The compiled normalizer: a darts-clone double-array trie over UTF-8
+        # input, and the NUL-terminated replacement strings it points into.
+        self._trie: Tuple[int, ...] = ()
+        self._replacements = b""
+        # BPE merges look pieces up by text: NORMAL pieces only.
+        self._bpe_pieces: Dict[str, Tuple[int, float]] = {}
         self._unk_surface = " ⁇ "
         if model_file is not None:
             self.Load(model_file)
@@ -158,6 +170,16 @@ class SentencePieceProcessor:
             raise UnsupportedSentencePieceModel(
                 f"{self._source}: byte_fallback is set but the vocabulary has "
                 f"{len(self._byte_ids)} of the 256 <0xNN> byte pieces")
+        # User-defined pieces skip the normalizer and start as one BPE symbol.
+        # Neither is implemented, and UNUSED pieces need the BPE resegment step.
+        if _USER_DEFINED in self._types and (self._trie or self._model_type == 2):
+            raise UnsupportedSentencePieceModel(
+                f"{self._source}: user-defined pieces with a compiled "
+                f"normalizer or a BPE model are not implemented")
+        if self._model_type == 2 and _UNUSED in self._types:
+            raise UnsupportedSentencePieceModel(
+                f"{self._source}: a BPE model with UNUSED pieces is not "
+                f"implemented")
 
     def _add_piece(self, blob: bytes) -> None:
         piece, score, kind = "", 0.0, _NORMAL
@@ -173,6 +195,8 @@ class SentencePieceProcessor:
         self._scores.append(score)
         self._types.append(kind)
         self._piece_to_id.setdefault(piece, index)
+        if kind == _NORMAL:
+            self._bpe_pieces.setdefault(piece, (index, score))
         if kind in (_NORMAL, _USER_DEFINED):
             key = piece.encode("utf-8")
             self._matchable[key] = (index, score)
@@ -200,56 +224,40 @@ class SentencePieceProcessor:
                 self._byte_fallback = bool(value)
             elif number == 44:
                 self._unk_surface = value.decode("utf-8", "replace")
-        if model_type != 1:
+        if model_type not in (1, 2):
             raise UnsupportedSentencePieceModel(
-                f"{self._source}: this reader implements UNIGRAM models, and "
-                f"the file declares "
-                f"{_MODEL_TYPES.get(model_type, model_type)!r}. Install the "
-                f"`sentencepiece` package to read it.")
+                f"{self._source}: this reader implements UNIGRAM and BPE "
+                f"models, and the file declares "
+                f"{_MODEL_TYPES.get(model_type, model_type)!r}")
+        self._model_type = model_type
         if treat_whitespace_as_suffix:
             raise UnsupportedSentencePieceModel(
                 f"{self._source}: treat_whitespace_as_suffix is set, which "
-                f"this reader does not implement. Install the "
-                f"`sentencepiece` package to read it.")
+                f"this reader does not implement")
 
     def _read_normalizer(self, blob: bytes) -> None:
-        name = "identity"
         charsmap = b""
-        remove_extra_whitespaces = False
         escape_whitespaces = True
-        rule_tsv = ""
         for number, _wire, value in _fields(blob):
-            if number == 1:
-                name = value.decode("utf-8", "replace")
-            elif number == 2:
+            if number == 2:
                 charsmap = value
             elif number == 3:
                 self._add_dummy_prefix = bool(value)
             elif number == 4:
-                remove_extra_whitespaces = bool(value)
+                self._remove_extra_whitespaces = bool(value)
             elif number == 5:
                 escape_whitespaces = bool(value)
-            elif number == 6:
-                rule_tsv = value.decode("utf-8", "replace")
-        # A normalizer other than `identity` rewrites the text before it is
-        # segmented — NFKC folding, custom rules — using a compiled table this
-        # reader has no copy of. Guessing at it would change ids silently.
-        if name != "identity" or charsmap or rule_tsv:
-            raise UnsupportedSentencePieceModel(
-                f"{self._source}: the model declares the {name!r} normalizer"
-                f"{' with a compiled charsmap' if charsmap else ''}, and this "
-                f"reader only implements `identity`. Install the "
-                f"`sentencepiece` package to read it.")
-        if remove_extra_whitespaces:
-            raise UnsupportedSentencePieceModel(
-                f"{self._source}: remove_extra_whitespaces is set, which this "
-                f"reader does not implement. Install the `sentencepiece` "
-                f"package to read it.")
         if not escape_whitespaces:
             raise UnsupportedSentencePieceModel(
                 f"{self._source}: escape_whitespaces is unset, which this "
-                f"reader does not implement. Install the `sentencepiece` "
-                f"package to read it.")
+                f"reader does not implement")
+        if charsmap:
+            size = struct.unpack_from("<I", charsmap)[0] if len(charsmap) >= 4 else -1
+            if size <= 0 or size % 4 or 4 + size > len(charsmap):
+                raise UnsupportedSentencePieceModel(
+                    f"{self._source}: the compiled charsmap is malformed")
+            self._trie = struct.unpack_from(f"<{size // 4}I", charsmap, 4)
+            self._replacements = charsmap[4 + size:]
 
     # ------------------------------------------------------------------
     # vocabulary
@@ -281,12 +289,19 @@ class SentencePieceProcessor:
         normalized = self._normalize(text)
         if not normalized:
             return []
+        if self._model_type == 2:
+            segments = self._bpe(normalized.decode("utf-8"))
+        else:
+            segments = [(normalized[begin:end], index)
+                        for begin, end, index in self._viterbi(normalized)]
         ids: List[int] = []
-        for begin, end, index in self._viterbi(normalized):
-            if index == self._unk_id and self._byte_fallback:
-                for byte in normalized[begin:end]:
-                    ids.append(self._byte_ids[byte])
-            else:
+        for surface, index in segments:
+            if index != self._unk_id:
+                ids.append(index)
+            elif self._byte_fallback:
+                ids.extend(self._byte_ids[byte] for byte in surface)
+            elif not ids or ids[-1] != self._unk_id:
+                # A run of unknown pieces becomes one unknown id.
                 ids.append(index)
         return ids
 
@@ -299,17 +314,102 @@ class SentencePieceProcessor:
         return [self._pieces[index] for index in self.Encode(text)]
 
     def _normalize(self, text: str) -> bytes:
-        """Apply the `identity` normalizer, then encode to UTF-8.
+        """Normalize ``text`` to UTF-8, as normalizer.cc ``Normalize`` does.
 
-        `identity` leaves the characters alone. All that is left is the dummy
-        prefix — a leading space so the first word looks like every other word
-        — and the rename of the space itself.
+        Each step replaces the longest charsmap match at the current place,
+        or keeps one character. Spaces become U+2581, a dummy prefix space is
+        added, and extra spaces are dropped when the model asks for it.
         """
-        if not text:
+        data = text.encode("utf-8")
+        squeeze = self._remove_extra_whitespaces
+        position = 0
+        if squeeze:
+            while position < len(data):
+                piece, length = self._normalize_prefix(data, position)
+                if piece != b" ":
+                    break
+                position += length
+        if position == len(data):
             return b""
-        if self._add_dummy_prefix:
-            text = " " + text
-        return text.replace(" ", _SPACE).encode("utf-8")
+        out = bytearray(_SPACE_BYTES if self._add_dummy_prefix else b"")
+        is_prev_space = squeeze
+        while position < len(data):
+            piece, length = self._normalize_prefix(data, position)
+            position += length
+            if is_prev_space:
+                piece = piece.lstrip(b" ")
+            if piece:
+                out += piece.replace(b" ", _SPACE_BYTES)
+                is_prev_space = squeeze and piece.endswith(b" ")
+        if squeeze:
+            while out.endswith(_SPACE_BYTES):
+                del out[-len(_SPACE_BYTES):]
+        return bytes(out)
+
+    def _normalize_prefix(self, data: bytes, position: int) -> Tuple[bytes, int]:
+        """The replacement for the longest charsmap match at ``position``.
+
+        The search is darts-clone ``commonPrefixSearch``.
+        """
+        trie = self._trie
+        if trie:
+            node = trie[0] >> 10 << ((trie[0] & 0x200) >> 6)
+            match = None
+            for end in range(position, len(data)):
+                node ^= data[end]
+                unit = trie[node]
+                if unit & 0x800000FF != data[end]:
+                    break
+                node ^= unit >> 10 << ((unit & 0x200) >> 6)
+                if unit & 0x100:
+                    match = end + 1, trie[node] & 0x7FFFFFFF
+            if match:
+                start = match[1]
+                return (self._replacements[start:self._replacements.index(0, start)],
+                        match[0] - position)
+        length = _utf8_len(data, position)
+        return data[position:position + length], length
+
+    def _bpe(self, text: str) -> List[Tuple[bytes, int]]:
+        """BPE segmentation of normalized ``text``, as ``(surface, piece id)``.
+
+        Start from single characters and merge the adjacent pair whose joined
+        piece scores best, the leftmost pair on a tie, as bpe_model.cc does.
+        """
+        pieces = self._bpe_pieces
+        symbols: List[Optional[str]] = list(text)
+        following = list(range(1, len(symbols) + 1))
+        following[-1] = -1
+        preceding = list(range(-1, len(symbols) - 1))
+        agenda: List[Tuple[float, int, int, str]] = []
+
+        def push(left: int, right: int) -> None:
+            if left < 0 or right < 0:
+                return
+            joined = symbols[left] + symbols[right]
+            found = pieces.get(joined)
+            if found is not None:
+                heapq.heappush(agenda, (-found[1], left, right, joined))
+
+        for left in range(len(symbols) - 1):
+            push(left, left + 1)
+        while agenda:
+            _score, left, right, joined = heapq.heappop(agenda)
+            # A pair whose symbols changed after it was queued is stale.
+            if following[left] != right or symbols[left] is None \
+                    or symbols[right] is None \
+                    or symbols[left] + symbols[right] != joined:
+                continue
+            symbols[left], symbols[right] = joined, None
+            following[left] = following[right]
+            if following[left] >= 0:
+                preceding[following[left]] = left
+            push(preceding[left], left)
+            push(left, following[left])
+
+        unk = (self._unk_id, 0.0)
+        return [(symbol.encode("utf-8"), pieces.get(symbol, unk)[0])
+                for symbol in symbols if symbol is not None]
 
     def _viterbi(self, blob: bytes) -> List[Tuple[int, int, int]]:
         """Best segmentation of ``blob``, as ``(begin, end, piece id)``.
@@ -430,7 +530,9 @@ class SentencePieceProcessor:
                 if first and self._add_dummy_prefix and text.startswith(_SPACE):
                     text = text[1:]
                 text = text.replace(_SPACE, " ")
-            first = False
+            # With remove_extra_whitespaces the text start lasts until
+            # something is written, so every leading U+2581 piece is dropped.
+            first = first and not text and self._remove_extra_whitespaces
             out.append(text)
         if pending:
             out.append(_utf8_to_text(bytes(pending)))

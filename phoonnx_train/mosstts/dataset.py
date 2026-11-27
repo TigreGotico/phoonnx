@@ -64,20 +64,20 @@ class SentencePieceTextTokenizer:
     """
 
     def __init__(self, model_file: Union[str, Path]) -> None:
-        import sentencepiece as spm
+        from phoonnx._sentencepiece import SentencePieceProcessor
 
         self.model_file = str(model_file)
-        self.sp = spm.SentencePieceProcessor(model_file=self.model_file)
+        self.sp = SentencePieceProcessor(self.model_file)
 
     def encode(self, text: str) -> List[int]:
-        return [int(token) for token in self.sp.encode(text, out_type=int)]
+        return self.sp.Encode(text)
 
     def decode(self, token_ids: Sequence[int]) -> str:
-        return str(self.sp.decode([int(token) for token in token_ids]))
+        return self.sp.Decode(token_ids)
 
     @property
     def vocab_size(self) -> int:
-        return int(self.sp.get_piece_size())
+        return self.sp.GetPieceSize()
 
 
 def load_jsonl(path: Union[str, Path]) -> List[Dict[str, Any]]:
