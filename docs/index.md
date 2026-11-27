@@ -51,6 +51,7 @@ phoonnx runs text-to-speech voices from many ecosystems through ONNX Runtime, an
 - [Deployment](deployment.md): run that server for real traffic, with a cache volume, prefetch, health checks and a memory budget.
 - [Benchmarking](benchmarking.md): measure time to first audio and the real-time factor.
 - [Voice sweep](voice_sweep.md): load and speak every index voice, check the audio with ASR, and compare two runs.
+- [Voice QA](voices.md): the ASR result of the default voice of each leader language, through three load paths.
 
 ## Train
 

@@ -90,4 +90,4 @@ python scripts/voice_sweep.py diff base.jsonl head.jsonl --wer-margin 0.15
 
 ---
 
-[← Benchmarking](benchmarking.md) · [Home](index.md) · [Training quickstart →](training/quickstart.md)
+[← Benchmarking](benchmarking.md) · [Home](index.md) · [Voice QA →](voices.md)
