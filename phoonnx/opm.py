@@ -11,6 +11,7 @@
 # limitations under the License.
 #
 import hashlib
+import json
 import os
 import tempfile
 import wave
@@ -24,11 +25,15 @@ from ovos_plugin_manager.templates.tts import TTS, TTSContext
 from scriptconv.frontend import Stages
 
 from phoonnx.config import AudioPost, SpeakerReference
-from phoonnx.model_manager import TTSModelManager, TTSModelInfo, choose_precision, resolve_precision
+from phoonnx.model_manager import TTSModelManager, TTSModelInfo, _lookup_distance, choose_precision, resolve_precision
 from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
 from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget
+
+# Bundled per-language defaults; each entry names the QA record that chose it.
+with open(os.path.join(os.path.dirname(__file__), "default_voices.json"), encoding="utf-8") as _f:
+    BUNDLED_DEFAULT_VOICES: Dict[str, str] = {tag: entry["voice_id"] for tag, entry in json.load(_f).items()}
 
 __all__ = ["PhoonnxTTSPlugin", "VoiceExceedsMemoryBudget"]
 
@@ -249,7 +254,9 @@ class PhoonnxTTSPlugin(TTS):
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         """
-        Selects the default TTS model for the given language.
+        Selects the default TTS model for the given language: the configured
+        voice, then the bundled ``default_voices.json`` entry, then the first
+        voice of the voice index.
 
         Parameters:
         	lang (str): Language tag used to look up available voices (e.g., "en-US", "pt-PT").
@@ -273,6 +280,9 @@ class PhoonnxTTSPlugin(TTS):
                 LOG.warning(f"configured default voice '{voice_id}' for "
                             f"{lang} is unknown ({exc}); falling back to "
                             f"the voice index default")
+        for tag, voice_id in BUNDLED_DEFAULT_VOICES.items():
+            if _lookup_distance(tag, lang) == 0:
+                return self.get_voice_info(voice_id)
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
             LOG.info(f"{lang} voices not found - refreshing voice list")

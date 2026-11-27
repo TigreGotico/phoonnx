@@ -1,0 +1,6 @@
+{
+    "da-DK": {
+        "voice_id": "supertonic/F1/da",
+        "source": "docs/data/voice_qa.json"
+    }
+}
