@@ -25,7 +25,7 @@ dependencies = [
     "linguatag>=0.4.1a1",
     # >=0.0.2a107: a group of digits joined by spaces reads as one number or stays
     # as written, and a pt word after a number takes the number's gender
-    "text2spoken>=0.0.2a107",
+    "text2spoken>=0.0.2a163",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
     # >=0.0.4a185: Shami normalises each script run (#344), an Arabic run as apc (#491); every backend has get_lang (#486). Every
@@ -84,7 +84,7 @@ test = [
     "scriptconv-copyleft>=0.3.1a1",
     # the model card tests render the text stack that the cards recommend, from
     # these libraries' own language list, call names and default model
-    "text2spoken>=0.0.2a107",
+    "text2spoken>=0.0.2a163",
     "bifonia>=0.7.0a1",
     "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
