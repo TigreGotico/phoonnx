@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.140.2a2](https://github.com/TigreGotico/phoonnx/tree/1.140.2a2) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a1...1.140.2a2)
+
+## [1.140.2a1](https://github.com/TigreGotico/phoonnx/tree/1.140.2a1) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.1a1...1.140.2a1)
+
+**Merged pull requests:**
+
+- fix: da-DK default voice that passes QA; bn-IN passes [\#1202](https://github.com/TigreGotico/phoonnx/pull/1202) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- refactor: read safetensors files without the safetensors package [\#1199](https://github.com/TigreGotico/phoonnx/pull/1199) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- fix\(opm\): pin Piper voice names under their catalog id; accept a speaker suffix on a Piper catalog id [\#1194](https://github.com/TigreGotico/phoonnx/pull/1194) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.140.1a1](https://github.com/TigreGotico/phoonnx/tree/1.140.1a1) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.0a2...1.140.1a1)
