@@ -377,53 +377,43 @@
    "Jeg har købt 3 bøger."
   ],
   "note": null,
-  "phoonnx": "1.139.0a1",
-  "text2spoken": "0.0.2a158",
-  "voice_id": "OpenVoiceOS/phoonnx_da-DK_miro_espeak",
-  "engine": "phoonnx",
-  "lang_code": "da-DK",
-  "phoneme_type": "espeak",
-  "alphabet": "ipa",
+  "phoonnx": "1.140.0a2",
+  "text2spoken": "0.0.2a169",
+  "voice_id": "supertonic/F1/da",
+  "engine": "supertonic",
+  "lang_code": "da",
+  "phoneme_type": "unicode",
+  "alphabet": "graphemes",
   "asr_model": "nemo-parakeet-tdt-0.6b-v3",
   "asr_floor": 0.246,
   "manual": {
-   "wer": [
-    0.375,
-    1.0
-   ],
-   "mean": 0.688,
    "class": "FAIL",
-   "audio_sha256": [
-    "8e36f9f6a98e8d21",
-    "7acd5ae350982263"
-   ],
+   "error": "RuntimeError: SuperTonic voice missing unicode_indexer_path in engine_params",
    "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
   },
   "index": {
    "wer": [
-    0.375,
-    1.0
+    0.25,
+    0.0
    ],
-   "mean": 0.688,
-   "class": "FAIL",
+   "mean": 0.125,
+   "class": "PASS",
    "audio_sha256": [
-    "8e36f9f6a98e8d21",
-    "7acd5ae350982263"
-   ],
-   "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
+    "02b13db7d3f205ed",
+    "af4dd7ed2c775799"
+   ]
   },
   "plugin": {
    "wer": [
-    0.375,
-    1.0
+    0.25,
+    0.0
    ],
-   "mean": 0.688,
-   "class": "FAIL",
+   "mean": 0.125,
+   "class": "PASS",
    "audio_sha256": [
-    "8e36f9f6a98e8d21",
-    "7acd5ae350982263"
-   ],
-   "issue": "https://github.com/TigreGotico/phoonnx/issues/1186"
+    "5c9e4a55a20fa1ce",
+    "c3a24acdc9b490ae"
+   ]
   }
  },
  {
@@ -539,8 +529,8 @@
    "ট্রেন 5 টায় আসবে, দেরি কোরো না!"
   ],
   "note": null,
-  "phoonnx": "1.139.0a1",
-  "text2spoken": "0.0.2a158",
+  "phoonnx": "1.140.0a2",
+  "text2spoken": "0.0.2a169",
   "voice_id": "facebook/mms-tts-ben-Bengali",
   "engine": "transformers",
   "lang_code": "bn",
@@ -550,42 +540,39 @@
   "asr_floor": 0.153,
   "manual": {
    "wer": [
-    0.25,
-    1.0
+    0.0,
+    0.429
    ],
-   "mean": 0.625,
-   "class": "FAIL",
+   "mean": 0.214,
+   "class": "PASS",
    "audio_sha256": [
-    "a997c0c4385c9ff5",
-    "5dc097d668b9b8b6"
-   ],
-   "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
+    "5398994466c64ae0",
+    "4073f87814f7641c"
+   ]
   },
   "index": {
    "wer": [
-    0.25,
-    1.0
+    0.0,
+    0.429
    ],
-   "mean": 0.625,
-   "class": "FAIL",
+   "mean": 0.214,
+   "class": "PASS",
    "audio_sha256": [
-    "a997c0c4385c9ff5",
-    "5dc097d668b9b8b6"
-   ],
-   "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
+    "5398994466c64ae0",
+    "4073f87814f7641c"
+   ]
   },
   "plugin": {
    "wer": [
-    0.25,
-    1.0
+    0.0,
+    0.429
    ],
-   "mean": 0.625,
-   "class": "FAIL",
+   "mean": 0.214,
+   "class": "PASS",
    "audio_sha256": [
-    "a997c0c4385c9ff5",
-    "5dc097d668b9b8b6"
-   ],
-   "issue": "https://github.com/TigreGotico/phoonnx/issues/1182"
+    "5398994466c64ae0",
+    "4073f87814f7641c"
+   ]
   }
  },
  {

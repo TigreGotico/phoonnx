@@ -421,6 +421,38 @@ class TestVoiceResolvedWithoutLoading(unittest.TestCase):
                                  "boot must not load (download) the model")
 
 
+class TestBundledDefaultVoices(unittest.TestCase):
+    """``default_voices.json`` picks the default voice before the voice index order."""
+
+    def _plugin(self, config=None):
+        voices = (_FakeVoiceInfo("OpenVoiceOS/phoonnx_da-DK_miro_espeak", lang="da-DK"),
+                  _FakeVoiceInfo("supertonic/F1/da", lang="da"))
+        return _make_plugin(config={"lang": "da-DK", **(config or {})}, voices=voices)[0]
+
+    def test_danish_tags_resolve_to_the_bundled_default(self):
+        plugin = self._plugin()
+        for lang in ("da-DK", "da", "da_dk"):
+            with self.subTest(lang=lang):
+                self.assertEqual(plugin.get_default_voice(lang).voice_id, "supertonic/F1/da")
+
+    def test_lang2voice_beats_the_bundled_default(self):
+        plugin = self._plugin({"lang2voice": {"da": "OpenVoiceOS/phoonnx_da-DK_miro_espeak"}})
+        self.assertEqual(plugin.get_default_voice("da-DK").voice_id,
+                         "OpenVoiceOS/phoonnx_da-DK_miro_espeak")
+
+    def test_env_var_beats_the_bundled_default(self):
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_DA": "OpenVoiceOS/phoonnx_da-DK_miro_espeak"}):
+            plugin = self._plugin()
+            self.assertEqual(plugin.get_default_voice("da").voice_id,
+                             "OpenVoiceOS/phoonnx_da-DK_miro_espeak")
+
+    def test_other_language_keeps_the_voice_index_default(self):
+        voices = (_FakeVoiceInfo("index/first-de", lang="de-DE"),
+                  _FakeVoiceInfo("supertonic/F1/da", lang="da"))
+        plugin, _ = _make_plugin(config={"lang": "de-DE"}, voices=voices)
+        self.assertEqual(plugin.get_default_voice("de-DE").voice_id, "index/first-de")
+
+
 class TestLangDefaultVoiceOverrides(unittest.TestCase):
     """``lang2voice`` config and ``PHOONNX_DEFAULT_VOICE_<LANG>`` env vars pick
     the per-language default voice, so one container serves every language."""

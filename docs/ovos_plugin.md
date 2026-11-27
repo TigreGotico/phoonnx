@@ -243,6 +243,8 @@ en-US None
 
 `en-US` has no key, so the default voice of the voice index for `en-US` speaks it.
 
+When no `lang2voice` key and no environment variable matches, the plugin reads the bundled table `phoonnx/default_voices.json`. Each key is a BCP-47 tag, and each entry gives a `voice_id` and a `source`. The `source` names the QA record that selected the voice, `docs/data/voice_qa.json` (see [voices.md](voices.md)). A key matches a request at language distance 0, the same match that the voice index uses, so the `da-DK` key also serves `da`. When no key matches, the first voice of the voice index for the language speaks it.
+
 The same table can come from the environment. This is often easier for a container whose `mycroft.conf` has no `lang2voice` entry for a language. Set `PHOONNX_DEFAULT_VOICE_<LANG>`, with underscores in place of dashes:
 
 ```bash
