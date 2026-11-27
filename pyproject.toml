@@ -129,9 +129,6 @@ test = [
     # fallback taken when pydub cannot import its audioop module
     "pydub",
     "audioop-lts; python_version >= '3.13'",
-    # the Pocket TTS card example test runs the engine's adapter, which reads the
-    # voice state with safetensors
-    "safetensors",
 ]
 # splits a monolithic VITS model into a streaming encoder and decoder at load;
 # a pre-split ("+RT") voice streams without it
@@ -142,10 +139,8 @@ espeak = ["scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espy
 matcha = [
     "scipy",
 ]
-# Pocket TTS reads its voice states with safetensors
-pockettts = [
-    "safetensors",
-]
+# Pocket TTS needs nothing extra; phoonnx/_safetensors.py reads its voice states
+pockettts = []
 # OmniVoice trims silence with pydub; without it a numpy RMS trim runs.
 # pydub imports audioop, which Python 3.13 removed and audioop-lts restores.
 omnivoice = ["pydub", "audioop-lts; python_version >= '3.13'"]
@@ -237,7 +232,6 @@ train-mixer = []
 # MOSS-TTS-Nano training (phoonnx_train/mosstts/), on top of [train]
 train-mosstts = [
     "sentencepiece",
-    "safetensors",
     "soundfile",
     "onnx",
 ]
@@ -416,8 +410,6 @@ all = [
     "tokenizers",
     # MOSS-TTS-Nano imports sentencepiece at runtime (phoonnx/engines/mosstts.py)
     "sentencepiece",
-    # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
-    "safetensors",
     # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
     # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
     "librosa>=0.9.2,<1.2",

@@ -62,6 +62,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 import onnxruntime
 
+from phoonnx._safetensors import load_file as load_safetensors
 from phoonnx.engines.base import AdapterSynthesisRequest, AdapterSynthesisResult, BaseOnnxAdapter
 from phoonnx.engines.speaker_encoders.base import BaseSpeakerEncoder
 from phoonnx.providers import make_session
@@ -326,13 +327,10 @@ class PocketTTSAdapter(BaseOnnxAdapter):
     def load_voice_state(self, path: str) -> Dict[str, np.ndarray]:
         """Load a published speaker state (a safetensors file of module states) and map
         it onto the flow-LM state tensors through the bundle's state manifest."""
-        from safetensors import safe_open
-
         model_state: Dict[str, Dict[str, np.ndarray]] = {}
-        with safe_open(str(path), framework="np") as handle:
-            for key in handle.keys():
-                module_name, tensor_key = key.split("/", 1)
-                model_state.setdefault(module_name, {})[tensor_key] = handle.get_tensor(key)
+        for key, tensor in load_safetensors(path).items():
+            module_name, tensor_key = key.split("/", 1)
+            model_state.setdefault(module_name, {})[tensor_key] = tensor
 
         state = self.init_state(self.flow_state_manifest)
         for entry in self.flow_state_manifest:
