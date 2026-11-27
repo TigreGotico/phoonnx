@@ -2,7 +2,12 @@ name: Release Alpha and Propose Stable
 
 on:
   workflow_dispatch:
-  pull_request:
+  # pull_request_target, not pull_request: a pull request from a fork gets a
+  # read-only token and no secrets under pull_request, so merging one directly
+  # could not push the version bump (403) nor publish (#1194). The called
+  # workflow checks out only `branch` and the commits it writes, never the
+  # pull request's head, and runs only once the pull request is merged.
+  pull_request_target:
     types: [closed]
     branches: [dev]
 
