@@ -123,6 +123,10 @@ class SentencePieceProcessor:
         self._replacements = b""
         # BPE merges look pieces up by text: NORMAL pieces only.
         self._bpe_pieces: Dict[str, Tuple[int, float]] = {}
+        # User-defined pieces skip the normalizer and are one BPE symbol that
+        # never merges.
+        self._user_defined: Dict[str, int] = {}
+        self._user_max = 0
         self._unk_surface = " ⁇ "
         if model_file is not None:
             self.Load(model_file)
@@ -170,12 +174,7 @@ class SentencePieceProcessor:
             raise UnsupportedSentencePieceModel(
                 f"{self._source}: byte_fallback is set but the vocabulary has "
                 f"{len(self._byte_ids)} of the 256 <0xNN> byte pieces")
-        # User-defined pieces skip the normalizer and start as one BPE symbol.
-        # Neither is implemented, and UNUSED pieces need the BPE resegment step.
-        if _USER_DEFINED in self._types and (self._trie or self._model_type == 2):
-            raise UnsupportedSentencePieceModel(
-                f"{self._source}: user-defined pieces with a compiled "
-                f"normalizer or a BPE model are not implemented")
+        # UNUSED pieces need the BPE resegment step.
         if self._model_type == 2 and _UNUSED in self._types:
             raise UnsupportedSentencePieceModel(
                 f"{self._source}: a BPE model with UNUSED pieces is not "
@@ -197,6 +196,9 @@ class SentencePieceProcessor:
         self._piece_to_id.setdefault(piece, index)
         if kind == _NORMAL:
             self._bpe_pieces.setdefault(piece, (index, score))
+        if kind == _USER_DEFINED and piece:
+            self._user_defined.setdefault(piece, index)
+            self._user_max = max(self._user_max, len(piece))
         if kind in (_NORMAL, _USER_DEFINED):
             key = piece.encode("utf-8")
             self._matchable[key] = (index, score)
@@ -349,8 +351,15 @@ class SentencePieceProcessor:
     def _normalize_prefix(self, data: bytes, position: int) -> Tuple[bytes, int]:
         """The replacement for the longest charsmap match at ``position``.
 
-        The search is darts-clone ``commonPrefixSearch``.
+        The search is darts-clone ``commonPrefixSearch``. A user-defined piece
+        at ``position`` is kept as it is.
         """
+        if self._user_defined:
+            text = data[position:position + 4 * self._user_max].decode("utf-8", "ignore")
+            match = self._user_prefix(text)
+            if match:
+                length = len(match.encode("utf-8"))
+                return data[position:position + length], length
         trie = self._trie
         if trie:
             node = trie[0] >> 10 << ((trie[0] & 0x200) >> 6)
@@ -370,6 +379,13 @@ class SentencePieceProcessor:
         length = _utf8_len(data, position)
         return data[position:position + length], length
 
+    def _user_prefix(self, text: str) -> str:
+        """The longest user-defined piece that starts ``text``, or ``""``."""
+        for length in range(min(self._user_max, len(text)), 0, -1):
+            if text[:length] in self._user_defined:
+                return text[:length]
+        return ""
+
     def _bpe(self, text: str) -> List[Tuple[bytes, int]]:
         """BPE segmentation of normalized ``text``, as ``(surface, piece id)``.
 
@@ -377,14 +393,23 @@ class SentencePieceProcessor:
         piece scores best, the leftmost pair on a tie, as bpe_model.cc does.
         """
         pieces = self._bpe_pieces
-        symbols: List[Optional[str]] = list(text)
+        symbols: List[Optional[str]] = []
+        frozen: List[bool] = []
+        position = 0
+        while position < len(text):
+            symbol = self._user_prefix(text[position:position + self._user_max]) \
+                if self._user_defined else ""
+            frozen.append(bool(symbol))
+            symbol = symbol or text[position]
+            symbols.append(symbol)
+            position += len(symbol)
         following = list(range(1, len(symbols) + 1))
         following[-1] = -1
         preceding = list(range(-1, len(symbols) - 1))
         agenda: List[Tuple[float, int, int, str]] = []
 
         def push(left: int, right: int) -> None:
-            if left < 0 or right < 0:
+            if left < 0 or right < 0 or frozen[left] or frozen[right]:
                 return
             joined = symbols[left] + symbols[right]
             found = pieces.get(joined)
@@ -408,8 +433,9 @@ class SentencePieceProcessor:
             push(left, following[left])
 
         unk = (self._unk_id, 0.0)
-        return [(symbol.encode("utf-8"), pieces.get(symbol, unk)[0])
-                for symbol in symbols if symbol is not None]
+        return [(symbol.encode("utf-8"),
+                 self._user_defined[symbol] if is_frozen else pieces.get(symbol, unk)[0])
+                for symbol, is_frozen in zip(symbols, frozen) if symbol is not None]
 
     def _viterbi(self, blob: bytes) -> List[Tuple[int, int, int]]:
         """Best segmentation of ``blob``, as ``(begin, end, piece id)``.

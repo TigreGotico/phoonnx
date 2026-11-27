@@ -161,6 +161,7 @@ class TestAgainstSentencePiece(unittest.TestCase):
                         for path in glob.glob(os.path.join(FIXTURES, "*sp_*.model")))
         self.assertEqual(models, sorted(REFERENCE))
         for name in ("sp_bpe_nfkc.model", "sp_bpe_identity_no_byte_fallback.model",
+                     "sp_bpe_nfkc_user_defined.model", "sp_unigram_identity_user_defined.model",
                      "sp_unigram_identity.model"):
             self.assertIn(name, REFERENCE)
 

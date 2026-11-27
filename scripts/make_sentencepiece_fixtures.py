@@ -39,7 +39,13 @@ CORPUS = [
     "numbers 123 4567 0.5 -3 1,000,000 42%",
     "tabs\tand  double  spaces   here",
     "aaaa bbbb aaaa abab abba baba",
+    "<|im_start|>user hello<|im_end|> <|audio_start|> <user_inst>fix ﬁx ﬁxed</user_inst>",
 ]
+
+# MOSS-TTS-Nano carries chat tokens as user-defined pieces. The last three hold
+# characters that nmt_nfkc would change, so the normalizer must skip them.
+USER_DEFINED = ["<|im_start|>", "<|im_end|>", "<|audio_start|>", "<user_inst>", "</user_inst>",
+                "ﬁx", "ＡＢ", "café"]
 
 TRAINED = {
     "sp_unigram_identity": dict(model_type="unigram", normalization_rule_name="identity",
@@ -48,6 +54,11 @@ TRAINED = {
                         byte_fallback=True, vocab_size=600),
     "sp_bpe_identity_no_byte_fallback": dict(model_type="bpe", normalization_rule_name="identity",
                                              byte_fallback=False, vocab_size=400),
+    "sp_bpe_nfkc_user_defined": dict(model_type="bpe", normalization_rule_name="nmt_nfkc",
+                                     byte_fallback=True, vocab_size=600, user_defined_symbols=USER_DEFINED),
+    "sp_unigram_identity_user_defined": dict(model_type="unigram", normalization_rule_name="identity",
+                                             byte_fallback=True, vocab_size=600,
+                                             user_defined_symbols=USER_DEFINED),
 }
 
 TEXTS = [
@@ -78,6 +89,9 @@ TEXTS = [
     "👍🏽 skin tone", " no-break space", "zero​width",
     "▁", "▁▁", "hallo▁welt",
     "a" * 200,
+    "<|im_start|>", "<|im_start|>user\nhello<|im_end|>", " <|audio_start|> ", "x<|im_end|>y",
+    "<|im_start|><|im_end|><|im_start|>", "<user_inst>speak</user_inst>", "<user_inst",
+    "ﬁx ﬁxed ﬁ x fix", "ＡＢＣ ＡＢ AB", "café cafe\u0301 CAFÉ", "  <|im_start|>  two  spaces  ",
     # strings whose unigram lattice ties, for the Pocket TTS vocabularies
     "ü1'\"ob0Ha\"Lñ kQuAc.ßLbbb",
     "ãzñqm5pppliNínöYßbZ6U",
