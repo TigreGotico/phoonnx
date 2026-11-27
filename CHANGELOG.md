@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.2a4](https://github.com/TigreGotico/phoonnx/tree/1.140.2a4) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a3...1.140.2a4)
+
+**Merged pull requests:**
+
+- chore: Hub ids under the AudioSRonnx and voiceclonnx orgs [\#1205](https://github.com/TigreGotico/phoonnx/pull/1205) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.140.2a3](https://github.com/TigreGotico/phoonnx/tree/1.140.2a3) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a2...1.140.2a3)
