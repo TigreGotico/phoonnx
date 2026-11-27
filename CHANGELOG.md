@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.139.1a2](https://github.com/TigreGotico/phoonnx/tree/1.139.1a2) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.1a1...1.139.1a2)
+
+**Merged pull requests:**
+
+- docs: generated voice QA table for the leader languages [\#1187](https://github.com/TigreGotico/phoonnx/pull/1187) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- feat\(ssml\): pitch and range made by the engine where it has the controls [\#1178](https://github.com/TigreGotico/phoonnx/pull/1178) ([goldyfruit](https://github.com/goldyfruit))
+- feat: stretch\_pace, a time-stretch fallback for engines without pace control [\#1172](https://github.com/TigreGotico/phoonnx/pull/1172) ([goldyfruit](https://github.com/goldyfruit))
+- fix: SSML rate reaches SuperTonic, F5-TTS and ZipVoice [\#1161](https://github.com/TigreGotico/phoonnx/pull/1161) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.139.1a1](https://github.com/TigreGotico/phoonnx/tree/1.139.1a1) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.0a2...1.139.1a1)
@@ -339,7 +350,6 @@
 
 - fix: preprocess --resume keeps the --jsonl-audio-path base of the first run [\#1055](https://github.com/TigreGotico/phoonnx/pull/1055) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 - fix: preprocess --engine reads the local audio under --jsonl-audio-path [\#1051](https://github.com/TigreGotico/phoonnx/pull/1051) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: evaluation scorer builds its phonemizer without the deprecated API [\#1049](https://github.com/TigreGotico/phoonnx/pull/1049) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.5a1](https://github.com/TigreGotico/phoonnx/tree/1.137.5a1) (2026-11-24)
 
@@ -356,10 +366,6 @@
 ## [1.137.2a1](https://github.com/TigreGotico/phoonnx/tree/1.137.2a1) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.1a1...1.137.2a1)
-
-**Merged pull requests:**
-
-- fix: --jsonl-audio-path uses one base for every run over the same sources [\#1047](https://github.com/TigreGotico/phoonnx/pull/1047) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.1a1](https://github.com/TigreGotico/phoonnx/tree/1.137.1a1) (2026-11-24)
 
