@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.2a5](https://github.com/TigreGotico/phoonnx/tree/1.140.2a5) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a4...1.140.2a5)
+
+**Merged pull requests:**
+
+- refactor: read BPE SentencePiece models without the sentencepiece package [\#1201](https://github.com/TigreGotico/phoonnx/pull/1201) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.140.2a4](https://github.com/TigreGotico/phoonnx/tree/1.140.2a4) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a3...1.140.2a4)
@@ -361,10 +369,6 @@
 ## [1.137.11a2](https://github.com/TigreGotico/phoonnx/tree/1.137.11a2) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a1...1.137.11a2)
-
-**Merged pull requests:**
-
-- docs: make the api and voice manager verifies exact and order-free [\#1070](https://github.com/TigreGotico/phoonnx/pull/1070) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.11a1](https://github.com/TigreGotico/phoonnx/tree/1.137.11a1) (2026-11-24)
 
