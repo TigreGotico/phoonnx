@@ -188,9 +188,9 @@ The plugin reads these synthesis options from its config. Each option has an und
 
 ### Piper voice names
 
-A Piper client names a voice `en_US-lessac-medium` or `lessac-medium`. The catalog calls it `piper/en_US-lessac-medium`. The plugin accepts all three spellings for a Piper voice, so a client that was set up for `ovos-tts-plugin-piper` or a Piper server needs no change of voice names. A Piper speaker suffix (`lessac-medium#3`) is ignored.
+A Piper client names a voice `en_US-lessac-medium` or `lessac-medium`. The catalog calls it `piper/en_US-lessac-medium`. The plugin accepts all three spellings for a Piper voice, so a client that was set up for `ovos-tts-plugin-piper` or a Piper server needs no change of voice names. A Piper speaker suffix (`lessac-medium#3`, `piper/en_US-lessac-medium#3`) is ignored: `speaker_id` or `speaker` selects the speaker.
 
-A short name that several languages share, such as `mls-medium`, goes to the voice of the language of the call (`lang`, or the language of the plugin when the call has none): first the same locale, then the same language. A short name that no language of the call fits and that two or more languages share is an error, not a guess. The voice is loaded once, whichever spelling asks for it.
+A short name that several languages share, such as `mls-medium`, goes to the voice of the language of the call (`lang`, or the language of the plugin when the call has none): first the same locale, then the same language. A short name that no language of the call fits and that two or more languages share is an error, not a guess. The voice is loaded once, whichever spelling asks for it. A pin in `pinned_voices` can use any of these spellings, and a short name of a pin goes to the language of the plugin.
 
 ## Per-language default voices
 
@@ -276,7 +276,7 @@ These config keys limit what stays in memory:
 |--------|---------|
 | `max_loaded_voices` | The most voices in memory at one time, pinned voices included. When it is unset, the plugin removes no voice. |
 | `max_loaded_bytes` | The memory budget for the voice weights in memory, as a byte count or a size string such as `"3GB"`, `"512 MB"` or `"1.5GiB"`. `KB`, `MB`, `GB` and `TB` are powers of 1000, and `KiB`, `MiB`, `GiB` and `TiB` are powers of 1024. When it is unset, the plugin removes no voice. |
-| `pinned_voices` | A voice id, or a list of voice ids, that the plugin loads at start and never removes. |
+| `pinned_voices` | A voice id, or a list of voice ids, that the plugin loads at start and never removes. A [Piper voice name](#piper-voice-names) counts as its catalog id. A pin that is not in the catalog is logged as an error at start and is not pinned. |
 | `load_wait_timeout` | The seconds that a load waits for memory before it loads anyway. The default is 300, so a memory limit never hangs a request. |
 
 A voice whose weights are larger than the whole `max_loaded_bytes` budget raises `VoiceExceedsMemoryBudget` and does not load. A voice that fits alone, but not beside the voices in memory, waits for room. After `load_wait_timeout` seconds it loads anyway, and the plugin logs a warning that memory use goes above the budget. A voice stays in the budget until each request that uses it finishes, so for some time the plugin can remove nothing. [Deployment](deployment.md#set-a-memory-budget) tells how to size the budget for the memory limit of a container.

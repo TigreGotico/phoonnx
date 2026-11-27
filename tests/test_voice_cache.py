@@ -21,7 +21,7 @@ def _plugin(testcase, **config):
                      return_value=MagicMock()),
         patch.object(PhoonnxTTSPlugin, "get_voice_info",
                      side_effect=lambda v, lang=None: MagicMock(
-                         load=MagicMock(return_value=f"model:{v}"))),
+                         voice_id=v, load=MagicMock(return_value=f"model:{v}"))),
         patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
     ]
     for pat in patchers:
