@@ -162,7 +162,7 @@ after you asked for another speaker, is a wrong answer, not a degraded one:
 ## Models
 
 voiceclonnx downloads its own weights from Hugging Face on first use
-(`TigreGotico/voiceclonnx-openvoice-v2` for the default engine) and caches them. phoonnx
+(`voiceclonnx/openvoice-v2` for the default engine) and caches them. phoonnx
 does not mirror or manage them.
 
 ---
