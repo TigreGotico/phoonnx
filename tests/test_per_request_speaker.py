@@ -19,7 +19,7 @@ def _plugin(testcase, **config):
         patch.object(PhoonnxTTSPlugin, "get_default_voice",
                      return_value=MagicMock()),
         patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                     side_effect=lambda v: MagicMock(
+                     side_effect=lambda v, lang=None: MagicMock(
                          load=MagicMock(return_value=MagicMock()),
                          config=MagicMock(speaker_id_map={"p225": 0, "p226": 1},
                                           noise_scale=0.667, length_scale=1.0,

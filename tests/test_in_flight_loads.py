@@ -40,7 +40,7 @@ def _plugin(testcase, load_delay=0.2, load_hook=None, **config):
         patch.object(PhoonnxTTSPlugin, "get_default_voice",
                      return_value=MagicMock()),
         patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                     side_effect=lambda v: MagicMock(load=slow_load)),
+                     side_effect=lambda v, lang=None: MagicMock(load=slow_load)),
         patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
     ]
     for pat in patchers:
@@ -82,7 +82,7 @@ class TestInFlightLoads(unittest.TestCase):
             patch.object(PhoonnxTTSPlugin, "get_default_voice",
                          return_value=MagicMock()),
             patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                         side_effect=lambda v: MagicMock(load=failing)),
+                         side_effect=lambda v, lang=None: MagicMock(load=failing)),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
         ]
         for pat in patchers:
@@ -208,7 +208,7 @@ class TestFailedLoadIsNotRetriedPerCaller(unittest.TestCase):
             patch.object(PhoonnxTTSPlugin, "get_default_voice",
                          return_value=MagicMock()),
             patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                         side_effect=lambda v: MagicMock(load=failing)),
+                         side_effect=lambda v, lang=None: MagicMock(load=failing)),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
         ]
         for pat in patchers:
@@ -286,7 +286,7 @@ class TestGateReleasedWithTheCacheInsert(unittest.TestCase):
             patch.object(PhoonnxTTSPlugin, "get_default_voice",
                          return_value=MagicMock()),
             patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                         side_effect=lambda v: MagicMock(load=counting)),
+                         side_effect=lambda v, lang=None: MagicMock(load=counting)),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
             patch.object(voice_cache_module, "_Loading", yielding_loading),
         ]
@@ -335,7 +335,7 @@ class TestTheGateSurvivesAFailureWhileCaching(unittest.TestCase):
             patch.object(PhoonnxTTSPlugin, "get_default_voice",
                          return_value=MagicMock()),
             patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                         side_effect=lambda v: MagicMock(
+                         side_effect=lambda v, lang=None: MagicMock(
                              load=lambda **_kw: "a-loaded-voice")),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
             # Fails only once the voice is loaded and is being cached.

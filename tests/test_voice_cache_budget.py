@@ -36,7 +36,7 @@ def _plugin(testcase, sizes=None, load_hook=None, **config):
 
     sizes = sizes or {}
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         def load(**_kwargs):
             if load_hook is not None:
                 load_hook(voice_id)
@@ -165,7 +165,7 @@ class TestByteBudget(unittest.TestCase):
         infos = {}
         real = plugin.get_voice_info
 
-        def info_for(voice_id):
+        def info_for(voice_id, lang=None):
             info = infos.setdefault(voice_id, real(voice_id))
             info.disk_size.side_effect = lambda: on_disk[voice_id]
             return info
@@ -538,7 +538,7 @@ class _Adapter:
 def _cyclic_plugin(testcase, keys, sizes, **config):
     from phoonnx.opm import PhoonnxTTSPlugin
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         return MagicMock(
             load=lambda **_kw: _CyclicVoice(voice_id),
             artifact_key=MagicMock(return_value=keys[voice_id]),
@@ -611,7 +611,7 @@ def _plugin_shared_keys(testcase, keys, sizes, **config):
     """A plugin whose catalog maps voice ids to artifact keys, real load()."""
     from phoonnx.opm import PhoonnxTTSPlugin
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         return MagicMock(
             load=lambda **_kw: _WeakrefableVoice(voice_id),
             artifact_key=MagicMock(return_value=keys[voice_id]),
@@ -746,7 +746,7 @@ class TestPostLoadEviction(unittest.TestCase):
             def __init__(self, voice_id):
                 self.voice_id = voice_id
 
-        def info_for(voice_id):
+        def info_for(voice_id, lang=None):
             def load(**_kw):
                 if voice_id == "big":
                     plugin_holder["p"].get_model("extra")

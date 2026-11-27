@@ -20,7 +20,7 @@ def _plugin(testcase, **config):
         patch.object(PhoonnxTTSPlugin, "get_default_voice",
                      return_value=MagicMock()),
         patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                     side_effect=lambda v: MagicMock(
+                     side_effect=lambda v, lang=None: MagicMock(
                          load=MagicMock(return_value=f"model:{v}"))),
         patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
     ]
