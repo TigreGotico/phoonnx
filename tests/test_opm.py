@@ -635,9 +635,10 @@ class TestPiperVoiceNames(unittest.TestCase):
         info = plugin.get_voice_info("lessac-medium")
         info.load = MagicMock(return_value=info.tts_voice)
         names = ("lessac-medium#3", "en_US-lessac-medium#3", "piper/en_US-lessac-medium#3")
-        with patch.object(opm, "wave"):
+        with patch.object(opm, "wave"), tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out.wav")
             for name in names:
-                plugin.get_tts("hello", "/tmp/out.wav", lang="en-US", voice=name, speaker_id=2)
+                plugin.get_tts("hello", out, lang="en-US", voice=name, speaker_id=2)
         self.assertEqual(info.load.call_count, 1)
         calls = info.tts_voice.synthesize_wav.call_args_list
         self.assertEqual(len(calls), len(names))
@@ -669,9 +670,10 @@ class TestPiperVoiceNames(unittest.TestCase):
                                               max_loaded_voices=1, max_loaded_bytes="1GB")
         lessac = voices["piper/en_US-lessac-medium"]
         self.assertEqual(lessac.load.call_count, 1, "the pin loads the voice at start")
-        with patch.object(opm, "wave"):
+        with patch.object(opm, "wave"), tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out.wav")
             for name in ("piper/en_US-lessac-medium", "en_US-lessac-medium", "lessac-medium"):
-                plugin.get_tts("hello", "/tmp/out.wav", lang="en-US", voice=name)
+                plugin.get_tts("hello", out, lang="en-US", voice=name)
         self.assertEqual(lessac.load.call_count, 1, "a request finds the pinned entry")
         self.assertEqual(list(plugin.voice_cache.voices), ["piper/en_US-lessac-medium"])
         self.assertEqual(plugin.voice_cache.pinned_voices, ["piper/en_US-lessac-medium"])
