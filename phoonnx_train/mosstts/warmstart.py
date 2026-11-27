@@ -3,7 +3,7 @@
 Supported sources:
 
 * an upstream Hugging Face checkpoint directory (``model.safetensors``, a sharded
-  ``model.safetensors.index.json``, or ``pytorch_model.bin``) — read with ``safetensors``
+  ``model.safetensors.index.json``, or ``pytorch_model.bin``) — read with ``phoonnx._safetensors``
   / ``torch.load`` directly, never through ``transformers`` and never with
   ``trust_remote_code``;
 * a single ``.safetensors`` / ``.bin`` / ``.pt`` file;
@@ -66,9 +66,10 @@ class WarmStartReport:
 
 
 def _load_safetensors(path: Path) -> Dict[str, torch.Tensor]:
-    from safetensors.torch import load_file
+    from phoonnx._safetensors import load_file
 
-    return dict(load_file(str(path), device="cpu"))
+    # np.frombuffer arrays are read-only; torch needs its own writable copy
+    return {key: torch.from_numpy(value.copy()) for key, value in load_file(path).items()}
 
 
 def _load_torch(path: Path) -> Dict[str, torch.Tensor]:

@@ -58,9 +58,9 @@ def patch_istft(model) -> None:
 
 def _restore_weight_norm(model: nn.Module, snap: str) -> None:
     """Copy the checkpoint's ``weight_g``/``weight_v`` into torch's parametrisations."""
-    from safetensors.torch import load_file
+    from phoonnx._safetensors import load_file
 
-    sd = load_file(glob.glob(snap + "/model.safetensors")[0])
+    sd = {k: torch.from_numpy(v.copy()) for k, v in load_file(glob.glob(snap + "/model.safetensors")[0]).items()}
     live = dict(model.named_parameters())
     fixed = 0
     for key, value in sd.items():
