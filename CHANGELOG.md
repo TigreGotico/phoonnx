@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.0a1](https://github.com/TigreGotico/phoonnx/tree/1.140.0a1) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.1a2...1.140.0a1)
+
+**Merged pull requests:**
+
+- feat\(opm\): accept Piper clients' voice names [\#1189](https://github.com/TigreGotico/phoonnx/pull/1189) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.139.1a2](https://github.com/TigreGotico/phoonnx/tree/1.139.1a2) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.1a1...1.139.1a2)
@@ -349,7 +357,6 @@
 **Merged pull requests:**
 
 - fix: preprocess --resume keeps the --jsonl-audio-path base of the first run [\#1055](https://github.com/TigreGotico/phoonnx/pull/1055) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: preprocess --engine reads the local audio under --jsonl-audio-path [\#1051](https://github.com/TigreGotico/phoonnx/pull/1051) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.5a1](https://github.com/TigreGotico/phoonnx/tree/1.137.5a1) (2026-11-24)
 
