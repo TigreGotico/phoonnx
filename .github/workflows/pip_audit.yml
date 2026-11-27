@@ -5,6 +5,10 @@ on:
     branches: [dev]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pip_audit:
     uses: OpenVoiceOS/gh-automations/.github/workflows/pip-audit.yml@dev
