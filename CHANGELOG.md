@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.0a2](https://github.com/TigreGotico/phoonnx/tree/1.140.0a2) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.0a1...1.140.0a2)
+
+**Merged pull requests:**
+
+- ci: cancel superseded pull request runs [\#1193](https://github.com/TigreGotico/phoonnx/pull/1193) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.140.0a1](https://github.com/TigreGotico/phoonnx/tree/1.140.0a1) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.1a2...1.140.0a1)
