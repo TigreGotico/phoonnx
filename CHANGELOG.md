@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.139.1a1](https://github.com/TigreGotico/phoonnx/tree/1.139.1a1) (2026-11-26)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.0a2...1.139.1a1)
+
+**Merged pull requests:**
+
+- fix\(deps\): install espeak with the de, es, fr, it, nl and pt extras [\#1185](https://github.com/TigreGotico/phoonnx/pull/1185) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+- perf\(supertonic\): optional fixed-shape padding for CUDA \(off by default\) [\#1057](https://github.com/TigreGotico/phoonnx/pull/1057) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.139.0a2](https://github.com/TigreGotico/phoonnx/tree/1.139.0a2) (2026-11-26)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.139.0a1...1.139.0a2)
@@ -351,7 +360,6 @@
 **Merged pull requests:**
 
 - fix: --jsonl-audio-path uses one base for every run over the same sources [\#1047](https://github.com/TigreGotico/phoonnx/pull/1047) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
-- fix: a failed export\_onnx --add-phoneme-alignment exits non-zero [\#1043](https://github.com/TigreGotico/phoonnx/pull/1043) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.1a1](https://github.com/TigreGotico/phoonnx/tree/1.137.1a1) (2026-11-24)
 
