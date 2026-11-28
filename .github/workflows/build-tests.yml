@@ -26,3 +26,6 @@ jobs:
       install_extras: 'test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld,train-features'
       test_path: 'tests'
       system_deps: 'espeak-ng'
+      # Two workers: with four, the training tests ran at once and the runner was shut down.
+      # A test file stays on one worker, so its module state is not shared.
+      pytest_args: '-n 2 --dist loadfile --durations=20'
