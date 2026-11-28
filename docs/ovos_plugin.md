@@ -46,7 +46,7 @@ plugin = PhoonnxTTSPlugin(config=config)
 plugin.get_tts("Hello from phoonnx.", "check.wav", voice=config["voice"])
 ```
 
-An SSML document (`<speak>...</speak>`, with or without attributes) reaches the voice as it was written: the plugin reads the markup itself, as [SSML](ssml.md) describes. `get_tts` returns the path of the WAV file and `None`. The first call downloads the voice. Play `check.wav` to hear it. A call without `voice` speaks the configured `voice` when its language is the language of the plugin. A call in another language uses the default voice of that language. If the plugin stops at start, read [Errors you may see](installation.md#errors-you-may-see).
+`get_tts` returns the path of the WAV file and `None`. The first call downloads the voice. Play `check.wav` to hear it. A call without `voice` speaks the configured `voice` when its language is the language of the plugin. A call in another language uses the default voice of that language. If the plugin stops at start, read [Errors you may see](installation.md#errors-you-may-see).
 
 ### Multi-speaker voices
 
@@ -191,6 +191,10 @@ The plugin reads these synthesis options from its config. Each option has an und
 A Piper client names a voice `en_US-lessac-medium` or `lessac-medium`. The catalog calls it `piper/en_US-lessac-medium`. The plugin accepts all three spellings for a Piper voice, so a client that was set up for `ovos-tts-plugin-piper` or a Piper server needs no change of voice names. A Piper speaker suffix (`lessac-medium#3`, `piper/en_US-lessac-medium#3`) is ignored: `speaker_id` or `speaker` selects the speaker.
 
 A short name that several languages share, such as `mls-medium`, goes to the voice of the language of the call (`lang`, or the language of the plugin when the call has none): first the same locale, then the same language. A short name that no language of the call fits and that two or more languages share is an error, not a guess. The voice is loaded once, whichever spelling asks for it. A pin in `pinned_voices` can use any of these spellings, and a short name of a pin goes to the language of the plugin.
+
+## SSML
+
+An SSML document (`<speak>...</speak>`, with or without attributes) reaches the voice as it was written, through `ovos-audio` and through `ovos-tts-server`: the plugin reads the markup itself, as [SSML](ssml.md) describes.
 
 ## Per-language default voices
 
