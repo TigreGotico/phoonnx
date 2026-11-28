@@ -770,9 +770,6 @@ def test_a_resume_without_jsonl_audio_spec_path_keeps_the_first_cache_base(tmp_p
 
 # --- Bengali digits reach the grapheme voice as written ----------------------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="#1182: text2spoken leaves Bengali numbers as written, so the "
-                          "default bn voice gets ASCII digits")
 def test_bengali_grapheme_frontend_reads_digits_as_words():
     from phoonnx.config import Alphabet, PhonemeType, _voice_phonemizer, voice_frontend
 
