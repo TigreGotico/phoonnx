@@ -10,6 +10,7 @@ from phoonnx.engines.supertonic import (
     load_unicode_indexer, length_to_mask, sample_noisy_latent, bucket_size, PAD_ENV,
 )
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
+from phoonnx.voice import SynthesisConfig, TTSVoice
 
 
 def _req(**params):
@@ -575,3 +576,69 @@ def test_configure_noop_without_engine_params():
     ad = SuperTonicAdapter()
     ad.configure(SimpleNamespace(engine_params={}))
     assert ad.duration_predictor is None
+
+
+# ---------------------------------------------------------------------------
+# the language of the call
+# ---------------------------------------------------------------------------
+
+def _encoded(ad, voice_lang, language=None):
+    config = None if language is None else SimpleNamespace(language=language)
+    return ad.encode_text("hi there.", _Voice(voice_lang), config)
+
+
+def test_encode_text_tells_the_model_the_language_of_the_call():
+    ad = SuperTonicAdapter()
+    ad.tokenizer = _tiny_tokenizer()
+    assert _encoded(ad, "ko", "en-GB") == _encoded(ad, "en")
+    assert _encoded(ad, "en", "ko-KR") == _encoded(ad, "ko")
+    assert _encoded(ad, "en", "ko-KR") != _encoded(ad, "en")
+
+
+@pytest.mark.parametrize("language", ["th-TH", "xx", "na", 3, None])
+def test_encode_text_keeps_the_voice_language_for_one_the_model_lacks(language):
+    ad = SuperTonicAdapter()
+    ad.tokenizer = _tiny_tokenizer()
+    assert _encoded(ad, "en", language) == _encoded(ad, "en")
+
+
+def test_ssml_lang_and_the_call_language_reach_supertonic():
+    asked = []
+    adapter = SuperTonicAdapter()
+
+    class _Spoken(TTSVoice):
+        frontend = None  # the documents hold no say-as
+
+        def __init__(self):
+            self.config = SimpleNamespace(sample_rate=44100, length_scale=1.0, lang_code="en",
+                                          lang_id_map=None, engine_params={})
+            self.adapter = adapter
+
+        def synthesize(self, text, syn_config=None, include_alignments=False):
+            asked.append((text, syn_config.language))
+            return iter(())
+
+    voice = _Spoken()
+    list(voice.synthesize_ssml('<speak>hello <lang xml:lang="fr-FR">bonjour</lang> '
+                               '<lang xml:lang="th-TH">word</lang></speak>'))
+    assert asked == [("hello", "en"), ("bonjour", "fr-FR"), ("word", None)]
+    asked.clear()
+    list(voice.synthesize_ssml("<speak>bonjour</speak>", lang="fr-CA"))
+    assert asked == [("bonjour", "fr-CA")]
+    asked.clear()
+    # A language the model lacks keeps the voice's own, whatever the call asked for.
+    list(voice.synthesize_ssml('<speak>bonjour <lang xml:lang="th-TH">word</lang></speak>',
+                               SynthesisConfig(language="fr-FR"), lang="fr-FR"))
+    assert asked == [("bonjour", "fr-FR"), ("word", None)]
+    asked.clear()
+    # SynthesisConfig.language alone is the language of the text.
+    list(voice.synthesize_ssml("<speak>annyeong</speak>", SynthesisConfig(language="ko")))
+    assert asked == [("annyeong", "ko")]
+    assert voice.takes_language("pt-BR") is True and voice.takes_language("th") is False
+
+
+def test_a_voice_with_a_language_map_keeps_to_its_map():
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.config = SimpleNamespace(lang_id_map={"en": 0})
+    voice.adapter = SuperTonicAdapter()
+    assert voice.takes_language("fr") is False

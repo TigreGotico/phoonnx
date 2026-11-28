@@ -527,6 +527,9 @@ class PhoonnxTTSPlugin(TTS):
                 lang=speaker_reference_lang or self._cfg_opt(
                     None, "speaker_reference_lang", "ref_lang"))
             synth_params = SynthesisConfig(
+                # A voice of a model that is told its language as a tag (SuperTonic) speaks
+                # the language the call asks for; every other voice keeps its own.
+                language=lang if lang and model.takes_language(lang) is True else None,
                 # speaker selection for multi-speaker voices (e.g. the Catalan
                 # multiaccent matxa model). ``speaker_id`` (int) or ``speaker``
                 # (name via the voice's speaker_id_map); ignored by single-speaker

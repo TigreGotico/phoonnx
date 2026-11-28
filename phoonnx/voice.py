@@ -1405,7 +1405,8 @@ class TTSVoice:
         (``pitch_range_params``);
         ``<prosody duration>`` and ``amazon:max-duration`` stretch the speech to the time asked
         for (within a factor of two); ``<lang>`` (or ``xml:lang`` on any element) picks the language
-        id of a multilingual voice when it has one (a monolingual voice says the words in its own
+        id of a multilingual voice when it has one, and the language of an engine that is told the
+        tag itself (SuperTonic; a monolingual voice says the words in its own
         language); :meth:`scriptconv.frontend.TextFrontend.say_as` of :attr:`frontend` reads
         ``<say-as>``; ``<sub>`` and ``<phoneme>`` are read as words and phonemes;
         ``<amazon:effect>`` whispers, softens or compresses the audio; ``<amazon:auto-breaths>`` and
@@ -1435,7 +1436,10 @@ class TTSVoice:
             base_length = self.config.length_scale
         if base_length is None:
             base_length = self.adapter.default_params().get("length_scale", 1.0)
-        voice_lang = lang or self.config.lang_code
+        # The language of the text where the markup says none: the caller's, which an engine
+        # that is told the tag may also get as SynthesisConfig.language, else the voice's.
+        asked = base.language if self.takes_language(base.language) else None
+        voice_lang = lang or asked or self.config.lang_code
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.
         rate: Optional[int] = None
@@ -1514,9 +1518,15 @@ class TTSVoice:
                 settings["length_scale"] = base_length / piece.rate
             if piece.volume != 1.0:
                 settings["audio"] = replace(base.audio, volume=base.audio.volume * piece.volume)
-            lang_id = self._lang_id_for(piece.voice_lang or piece.lang)
+            spoken_in = piece.voice_lang or piece.lang
+            lang_id = self._lang_id_for(spoken_in)
             if lang_id is not None:
                 settings["language"] = lang_id
+            elif self.takes_language(spoken_in):
+                settings["language"] = spoken_in
+            elif self.takes_language(base.language):
+                # A language the model lacks keeps the voice's own, not the one the call asked.
+                settings["language"] = None
             native, shifted = self._native_pitch(piece, base)
             if native:
                 settings["extra"] = {**base.extra, **native}
@@ -1687,6 +1697,15 @@ class TTSVoice:
             raise ValueError(f"voice {self._voice_name} has no language {language!r}. "
                              f"Its languages are: {sorted(self.config.lang_id_map)}")
         return language_id
+
+    def takes_language(self, code: Optional[str]) -> bool:
+        """Whether this voice speaks the language *code* when a call asks for it as
+        ``SynthesisConfig.language``, through an engine that is told the tag itself
+        (SuperTonic). A voice with a ``lang_id_map`` takes the codes of its map instead."""
+        if not code or getattr(self.config, "lang_id_map", None):
+            return False
+        asks = getattr(self.adapter, "takes_language", None)
+        return callable(asks) and asks(code) is True
 
     def _lang_id_for(self, tag: Optional[str]) -> Optional[int]:
         """The language id of a multilingual voice for *tag*, or None (monolingual, or unknown)."""

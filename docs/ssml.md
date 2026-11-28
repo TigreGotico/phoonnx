@@ -164,7 +164,11 @@ pitch with the range (+3.1 st at x-high, against 0.04 st on Mixer-TTS).
   raises.
 * An unknown element is read as its words. `desc`, `metadata`, `meta` and `lexicon` describe
   the document, so they are not read.
-* `xml:lang` on any element sets the language of its content, and of a `say-as` in it.
+* `xml:lang` on any element sets the language of its content, and of a `say-as` in it. The
+  words are then spoken in that language by a multilingual voice that has it in its
+  `lang_id_map`, and by an engine that is told the language tag itself: every SuperTonic voice
+  speaks the 31 languages of its model, whatever the language in its name. Any other voice, and
+  a language the model lacks, keeps the voice's own language.
 * `say-as` goes to `TextFrontend.say_as` of the voice with its written value,
   `interpret-as`, `format`, `detail` and the language in force. phoonnx holds no reading
   rule. text2spoken reads the value.
