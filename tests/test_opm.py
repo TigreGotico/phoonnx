@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 from linguatag import default_region
 
 import phoonnx.opm as opm
+from phoonnx.ssml import parse_ssml
 from phoonnx.voice import SynthesisConfig
 
 
@@ -192,6 +193,31 @@ class TestVoiceResolution(unittest.TestCase):
         first = plugin.get_model(v.voice_id)
         second = plugin.get_model(v.voice_id)
         self.assertIs(first, second)
+
+
+class TestValidateSsml(unittest.TestCase):
+    """What ``ovos-tts-server`` and ovos-audio hand to ``get_tts``."""
+
+    DOCUMENTS = (
+        '<speak>One.<break time="2s"/>Two.</speak>',
+        '<speak xml:lang="en-US">One.<break time="2s"/>Two.</speak>',
+        '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis">'
+        'One.<break time="2s"/>Two.</speak>',
+        '<?xml version="1.0"?><speak xml:lang="en-US">One.<break time="2s"/>Two.</speak>',
+        '<speak><sub alias="two  spaces">x</sub><break time="2s"/>y</speak>',
+    )
+
+    def test_a_document_keeps_its_markup(self):
+        plugin, _ = _make_plugin(voices=[_FakeVoiceInfo("OpenVoiceOS/v")])
+        for document in self.DOCUMENTS:
+            with self.subTest(document=document):
+                kept = plugin.validate_ssml(document)
+                self.assertEqual(kept, document)
+                self.assertEqual(sum(piece.pause_ms for piece in parse_ssml(kept)), 2000)
+
+    def test_plain_text_is_left_to_the_base_class(self):
+        plugin, _ = _make_plugin(voices=[_FakeVoiceInfo("OpenVoiceOS/v")])
+        self.assertEqual(plugin.validate_ssml("Hello  there."), "Hello there.")
 
 
 class TestGetTts(unittest.TestCase):

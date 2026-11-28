@@ -454,6 +454,25 @@ class PhoonnxTTSPlugin(TTS):
                 # bounded dictionary for a much worse bug.
                 TTSContext._caches.pop(oldest, None)
 
+    def validate_ssml(self, utterance: str) -> str:
+        """An SSML document goes to :meth:`get_tts` as it was written.
+
+        phoonnx reads SSML itself and never says a tag. The base class tidies a document for
+        an engine that cannot: it looks for ``<speak>`` written exactly so, and one with
+        attributes (``<speak xml:lang="fr-FR">``, or the namespace and version of SSML 1.1)
+        gets a second, unclosed ``<speak>`` in front of it. That document does not parse, so
+        all of its markup was lost: no pause, pace or ``say-as`` was heard.
+
+        Parameters:
+            utterance (str): Text or SSML to speak.
+
+        Returns:
+            str: A document unchanged; anything else as the base class leaves it.
+        """
+        if looks_like_ssml(utterance):
+            return utterance
+        return super().validate_ssml(utterance)
+
     def get_tts(self, sentence, wav_file, lang=None, voice=None,
                 speaker_reference=None, speaker_reference_text=None,
                 speaker_reference_lang=None,

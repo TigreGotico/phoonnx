@@ -192,6 +192,10 @@ A Piper client names a voice `en_US-lessac-medium` or `lessac-medium`. The catal
 
 A short name that several languages share, such as `mls-medium`, goes to the voice of the language of the call (`lang`, or the language of the plugin when the call has none): first the same locale, then the same language. A short name that no language of the call fits and that two or more languages share is an error, not a guess. The voice is loaded once, whichever spelling asks for it. A pin in `pinned_voices` can use any of these spellings, and a short name of a pin goes to the language of the plugin.
 
+## SSML
+
+An SSML document (`<speak>...</speak>`, with or without attributes) reaches the voice as it was written, through `ovos-audio` and through `ovos-tts-server`: the plugin reads the markup itself, as [SSML](ssml.md) describes.
+
 ## Per-language default voices
 
 `voice` sets one voice for the requests in the language of the plugin. To serve many languages from one server, map languages to voices with `lang2voice`. The plugin then selects the voice for the language of each request, and downloads and caches it on first use:
