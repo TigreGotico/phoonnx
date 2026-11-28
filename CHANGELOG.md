@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.140.2a6](https://github.com/TigreGotico/phoonnx/tree/1.140.2a6) (2026-11-27)
+
+[Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a5...1.140.2a6)
+
+**Merged pull requests:**
+
+- ci: release on a merged fork pull request too \(pull\_request\_target\) [\#1204](https://github.com/TigreGotico/phoonnx/pull/1204) ([goldyfruit](https://github.com/goldyfruit))
+
 ## [1.140.2a5](https://github.com/TigreGotico/phoonnx/tree/1.140.2a5) (2026-11-27)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.140.2a4...1.140.2a5)
@@ -361,10 +369,6 @@
 ## [1.137.11a3](https://github.com/TigreGotico/phoonnx/tree/1.137.11a3) (2026-11-24)
 
 [Full Changelog](https://github.com/TigreGotico/phoonnx/compare/1.137.11a2...1.137.11a3)
-
-**Merged pull requests:**
-
-- test: pin open defects as strict xfails [\#1072](https://github.com/TigreGotico/phoonnx/pull/1072) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 ## [1.137.11a2](https://github.com/TigreGotico/phoonnx/tree/1.137.11a2) (2026-11-24)
 
