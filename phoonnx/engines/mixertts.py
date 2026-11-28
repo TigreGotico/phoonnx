@@ -1,0 +1,271 @@
+"""
+Mixer-TTS inference adapter.
+
+Mixer-TTS (NVIDIA, https://arxiv.org/abs/2110.03584) is a non-autoregressive,
+MLP-Mixer / FastPitch-style acoustic model: text -> 80-channel mel. Like
+Matcha-TTS and GlowTTS it is **two-stage** — a separate vocoder turns the mel
+into a waveform — so this adapter reuses :mod:`phoonnx.engines.vocoders`
+(the reference models pair with Vocos / HiFi-GAN mels).
+
+ONNX inputs:
+  ``token_ids`` int64   [B, T]   IPA symbol ids (espeak)
+  ``pace``      float32 [1]      speaking-rate scale (>1 faster)
+  ``speaker``   int32   [1]      speaker id (single-speaker LJ = 0)
+  ``emotion``   int32   [1]      emotion id (0)
+  ``pitch_mul`` float32 [1]      pitch multiplier
+  ``pitch_add`` float32 [1]      pitch offset
+
+ONNX output:
+  ``mel_spec`` ``[B, 80, T_mel]``
+"""
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
+import numpy as np
+import onnxruntime
+
+from phoonnx.engines.base import (
+    AdapterSynthesisRequest,
+    AdapterSynthesisResult,
+    BaseOnnxAdapter,
+)
+from phoonnx.engines.vocoders import build_vocoder
+from phoonnx.engines.vocoders.base import BaseVocoder
+
+
+class MixerTTSAdapter(BaseOnnxAdapter):
+    """Adapter for Mixer-TTS ONNX models (mel + separate vocoder)."""
+
+    # Standard Mixer-TTS/FastPitch ONNX exports emit only ``mel_spec`` — no
+    # duration output. These candidates cover the raw duration-predictor
+    # tensor some FastPitch training code calls "durations" (in mel frames),
+    # so a future re-export exposing it lights up alignment automatically;
+    # with today's typical exports this resolves to None (see
+    # docs/alignment.md).
+    DURATION_OUTPUT_NAMES = ["durations", "dur", "log_durations"]
+
+    def __init__(self, vocoder: Optional[BaseVocoder] = None):
+        self.vocoder = vocoder
+        self._engine_params: Dict[str, Any] = {}
+
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
+    #: The voice's speakers, from its config; a pitch range is for a single-speaker voice.
+    _num_speakers: int = 1
+
+    def configure(self, voice_config: Any) -> None:
+        try:
+            self._num_speakers = int(getattr(voice_config, "num_speakers", 1) or 1)
+        except (TypeError, ValueError):
+            self._num_speakers = 1
+        self.configure_from_params(voice_config.engine_params)
+
+    def configure_from_params(self, engine_params: Dict[str, Any]) -> None:
+        self._engine_params = engine_params or {}
+        if self.vocoder is None and (self._engine_params.get("vocoder_path")
+                                     or self._engine_params.get("vocoder_type")):
+            self.vocoder = build_vocoder(
+                model_path=self._engine_params.get("vocoder_path"),
+                vocoder_type=self._engine_params.get("vocoder_type"),
+                # the vocoder runs on the providers and threads of the voice
+                config={"providers": self._engine_params.get("providers"),
+                        "threads": self._engine_params.get("threads"),
+                        **(self._engine_params.get("vocoder_config") or {})},
+            )
+
+    def _require_vocoder(self) -> BaseVocoder:
+        if self.vocoder is None:
+            self.configure_from_params(self._engine_params)
+        if self.vocoder is None:
+            raise RuntimeError(
+                "Mixer-TTS requires a vocoder. Set 'vocoder_path' (or "
+                "'vocoder_type') in config.engine_params."
+            )
+        return self.vocoder
+
+    # ------------------------------------------------------------------
+    # Required
+    # ------------------------------------------------------------------
+
+    def build_feed_dict(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> Dict[str, np.ndarray]:
+        p = request.params
+        args: Dict[str, np.ndarray] = {
+            "token_ids": request.phoneme_ids.astype(np.int64),
+            "pace": np.array([float(p.get("pace", 1.0))], dtype=np.float32),
+            "speaker": np.array([int(request.speaker_id or 0)], dtype=np.int32),
+            "emotion": np.array([int(p.get("emotion", 0))], dtype=np.int32),
+            "pitch_mul": np.array([float(p.get("pitch_mul", 1.0))], dtype=np.float32),
+            "pitch_add": np.array([float(p.get("pitch_add", 0.0))], dtype=np.float32),
+        }
+        return self._filter_inputs(args, session)
+
+    # Some exports in this family (notably SpeedySpeech, which shares the
+    # FastPitch ONNX contract) stack dilated residual convolutions with no
+    # padding, so the graph rejects any token sequence shorter than its
+    # receptive field with ``INVALID_ARGUMENT ... Invalid input shape``.
+    # Short utterances ("Yes.") are ordinary TTS input, so pad up to this
+    # bound and retry rather than propagating the crash.
+    MAX_PAD_TO = 32
+
+    def synthesize(
+        self,
+        request: AdapterSynthesisRequest,
+        session: onnxruntime.InferenceSession,
+    ) -> AdapterSynthesisResult:
+        feed = self.build_feed_dict(request, session)
+        try:
+            outputs = session.run(None, feed)
+        except onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument as err:
+            if "Invalid input shape" not in str(err):
+                raise
+            outputs = self._run_padded(session, feed, err)
+        try:
+            return self.parse_outputs(
+                outputs, request, output_names=self._safe_output_names(session)
+            )
+        except TypeError:
+            return self.parse_outputs(outputs, request)
+
+    def _run_padded(self, session, feed, err):
+        """Retry ``session.run`` with ``token_ids`` right-padded with the pad id."""
+        tokens = np.asarray(feed["token_ids"])
+        length = tokens.shape[-1]
+        pad_id = int(self._engine_params.get("pad_id", 0))
+        for target in range(length + 1, self.MAX_PAD_TO + 1):
+            padded = np.pad(
+                tokens, [(0, 0)] * (tokens.ndim - 1) + [(0, target - length)],
+                constant_values=pad_id,
+            )
+            try:
+                return session.run(None, {**feed, "token_ids": padded})
+            except onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument as retry_err:
+                if "Invalid input shape" not in str(retry_err):
+                    raise
+        raise err
+
+    def parse_outputs(
+        self,
+        outputs: List[np.ndarray],
+        request: AdapterSynthesisRequest,
+        output_names: Optional[List[str]] = None,
+    ) -> AdapterSynthesisResult:
+        arrays = [np.asarray(o) for o in outputs if o is not None]
+        mel = next((a for a in arrays if a.ndim == 3 and 16 <= a.shape[1] <= 256), None)
+        if mel is None:
+            mel = max(arrays, key=lambda a: a.size)
+        vocoder = self._require_vocoder()
+        denoise = bool(request.params.get("denoise", False)) and vocoder.supports_denoise
+        audio = vocoder.mel_to_audio(mel.astype(np.float32), denoise=denoise)
+
+        extras: Dict[str, Any] = {}
+        # Mel-frame durations, when the export exposes them. Converted to
+        # audio samples uniformly by TTSVoice.render via
+        # VoiceConfig.hop_length (mel frame rate == vocoder hop_length for
+        # the standard HiFi-GAN/Vocos vocoders this adapter pairs with).
+        durations = self._find_duration_output(outputs, output_names)
+        if durations is not None:
+            extras["phoneme_id_samples"] = durations.squeeze()
+
+        return AdapterSynthesisResult(audio=np.asarray(audio).reshape(-1), extras=extras)
+
+    def default_params(self) -> Dict[str, float]:
+        return {"pace": 1.0, "pitch_mul": 1.0, "pitch_add": 0.0, "emotion": 0}
+
+    def length_scale_params(self, length_scale: float) -> Dict[str, float]:
+        return {"pace": 1.0 / length_scale}
+
+    # The predicted pitch is z-scored Hz, ``(f0 - pitch_mean) / pitch_std``, and the graph
+    # turns it into ``pitch * pitch_mul + pitch_add`` before it is embedded.
+
+    def pitch_range_params(self, pitch_range: float, params: Mapping[str, Any],
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
+        """A range of *pitch_range* times the voice's: ``pitch_mul`` scales the movement of the
+        z-scored pitch around its mean, and ``pitch_add`` (where the voice puts that mean) is
+        kept. It needs no statistics. A multi-speaker voice gets no range: on the voices
+        measured (nipponjo's Arabic ones) it moved each speaker's mean pitch by up to 0.6 st
+        and widened the movement 1.0 to 1.7 times, depending on the speaker."""
+        inputs = self._graph_inputs(session)
+        if inputs is not None and not {"pitch_mul", "pitch_add"} <= inputs:
+            return {}
+        if self._num_speakers > 1:
+            return {}
+        return {"pitch_mul": float(params.get("pitch_mul", 1.0)) * pitch_range}
+
+    def pitch_shift_params(self, semitones: float, params: Mapping[str, Any],
+                           session: Any = None, speaker: Optional[int] = None) -> Dict[str, float]:
+        """A shift of *semitones*: every frequency times ``k = 2 ** (semitones / 12)``.
+
+        In the z-scored domain that is ``z * k + mean * (k - 1) / std``, so it needs the pitch
+        mean and standard deviation in Hz that the model was trained with: ``pitch_mean`` and
+        ``pitch_std`` in the voice's ``engine_params``, else in the graph's metadata (phoonnx's
+        Mixer-TTS export writes them; its FastPitch export does not). Without them, nothing:
+        the shift is made on the finished audio. A voice whose speakers are z-scored apart
+        states a list of each, indexed by speaker id; a call to a speaker the lists lack is
+        shifted on the audio. Unvoiced tokens, which training marks with a z-score of 0, are
+        moved as the mean is.
+        """
+        inputs = self._graph_inputs(session)
+        if inputs is not None and not {"pitch_mul", "pitch_add"} <= inputs:
+            return {}
+        stats = self._pitch_stats(params, session, speaker)
+        if stats is None:
+            return {}
+        mean, std = stats
+        k = 2.0 ** (semitones / 12.0)
+        return {"pitch_mul": float(params.get("pitch_mul", 1.0)) * k,
+                "pitch_add": float(params.get("pitch_add", 0.0)) * k + mean * (k - 1.0) / std}
+
+    @staticmethod
+    def _pitch_stats(params: Mapping[str, Any], session: Any,
+                     speaker: Optional[int] = None) -> Optional[Tuple[float, float]]:
+        """The pitch mean and standard deviation in Hz of the call's speaker, when the voice
+        states them: one number each, or a list of each indexed by speaker id."""
+        found = {key: params.get(key) for key in ("pitch_mean", "pitch_std")}
+        if None in found.values():
+            try:
+                meta = session.get_modelmeta().custom_metadata_map
+            except Exception:
+                meta = {}
+            found = {key: found[key] if found[key] is not None else meta.get(key) for key in found}
+        picked = {}
+        for key, value in found.items():
+            if isinstance(value, (list, tuple)):
+                index = 0 if speaker is None else speaker
+                if not isinstance(index, int) or not 0 <= index < len(value):
+                    return None
+                value = value[index]
+            picked[key] = value
+        try:
+            mean, std = float(picked["pitch_mean"]), float(picked["pitch_std"])
+        except (TypeError, ValueError):
+            return None
+        # The export writes 0 and 1 when training kept no statistics: those are not a speaker's.
+        if not (mean > 0 and std > 0) or (mean, std) == (0.0, 1.0):
+            return None
+        return mean, std
+
+    # ------------------------------------------------------------------
+    # Optional
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def detect(
+        config: Optional[Dict[str, Any]] = None,
+        session: Optional[onnxruntime.InferenceSession] = None,
+    ) -> bool:
+        if config is not None and config.get("engine") in ("mixertts", "mixer_tts"):
+            return True
+        if session is not None:
+            inputs = {inp.name for inp in session.get_inputs()}
+            outs = {o.name for o in session.get_outputs()}
+            # the pace/pitch_mul/pitch_add control inputs are Mixer-TTS specific
+            if {"token_ids", "pace", "pitch_mul"}.issubset(inputs):
+                return True
+            if "mel_spec" in outs and "token_ids" in inputs:
+                return True
+        return False

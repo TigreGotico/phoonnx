@@ -1,0 +1,34 @@
+{
+    "inflect/micro-en": {
+        "voice_id": "inflect/micro-en",
+        "engine": "phoonnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/384dc1593561da6e03dcf85767ad6ae7fb17ba4c/duration.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/384dc1593561da6e03dcf85767ad6ae7fb17ba4c/phoonnx.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "lang": "en-us",
+        "aux_model_urls": {
+            "decode_path": "https://huggingface.co/Phoonnx/vits-en_us-inflect-micro_v2-espeak/resolve/384dc1593561da6e03dcf85767ad6ae7fb17ba4c/decode.onnx"
+        }
+    },
+    "inflect/nano-en": {
+        "voice_id": "inflect/nano-en",
+        "engine": "phoonnx",
+        "model_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/a89a30b1a34d321c067e2edc436120c1dd7196cc/duration.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/a89a30b1a34d321c067e2edc436120c1dd7196cc/phoonnx.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "lang": "en-us",
+        "aux_model_urls": {
+            "decode_path": "https://huggingface.co/Phoonnx/vits-en_us-inflect-nano_v2-espeak/resolve/a89a30b1a34d321c067e2edc436120c1dd7196cc/decode.onnx"
+        }
+    }
+}

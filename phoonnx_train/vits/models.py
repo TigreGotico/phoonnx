@@ -9,6 +9,7 @@ from torch.nn.utils import remove_weight_norm, spectral_norm, weight_norm
 
 from . import attentions, commons, modules, monotonic_align
 from .commons import get_padding, init_weights
+from .input_features import make_input_layer
 
 
 class StochasticDurationPredictor(nn.Module):
@@ -176,6 +177,7 @@ class TextEncoder(nn.Module):
         n_layers: int,
         kernel_size: int,
         p_dropout: float,
+        input_layer: typing.Optional[nn.Module] = None,
     ):
         super().__init__()
         self.n_vocab = n_vocab
@@ -187,16 +189,37 @@ class TextEncoder(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
 
-        self.emb = nn.Embedding(n_vocab, hidden_channels)
-        nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
+        # a feature table replaces the id embedding; export bakes it back into one
+        self.input_layer = input_layer
+        if input_layer is None:
+            self.emb = nn.Embedding(n_vocab, hidden_channels)
+            nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
 
         self.encoder = attentions.Encoder(
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
+    def bake_input(self) -> None:
+        """Replace a feature input layer with the id embedding that gives the same values."""
+        if self.input_layer is None:
+            return
+        with torch.no_grad():
+            table = self.input_layer.table()
+            emb = nn.Embedding.from_pretrained(table / math.sqrt(self.hidden_channels), freeze=False)
+            ids = torch.arange(table.size(0), device=table.device)
+            baked = emb(ids) * math.sqrt(self.hidden_channels)
+            if not torch.allclose(baked, table, rtol=1e-5, atol=1e-5):
+                raise RuntimeError("the baked id table differs from the feature input layer by "
+                                   f"{(baked - table).abs().max().item():.3g}")
+        self.emb = emb
+        self.input_layer = None
+
     def forward(self, x, x_lengths):
-        x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
+        if self.input_layer is None:
+            x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
+        else:
+            x = self.input_layer(x)
         x = torch.transpose(x, 1, -1)  # [b, h, t]
         x_mask = torch.unsqueeze(
             commons.sequence_mask(x_lengths, x.size(2)), 1
@@ -545,7 +568,38 @@ class SynthesizerTrn(nn.Module):
         n_speakers: int = 1,
         gin_channels: int = 0,
         use_sdp: bool = True,
+        n_langs: int = 0,
+        external_speaker_embedding: bool = False,
+        speaker_embedding_dim: int = 512,
+        input_layer: str = "ids",
+        input_features: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
+        """
+        Parameters
+        ----------
+        input_layer : str
+            ``"ids"`` for the id embedding (default), or ``"residual"`` or
+            ``"composition"`` to build the text-encoder input from
+            ``input_features``, as :mod:`phoonnx_train.vits.input_features` describes.
+        input_features : dict, optional
+            A feature table read by
+            :func:`phoonnx_train.vits.input_features.load_input_features`.
+        n_langs : int
+            Number of languages for an additive language embedding, added on
+            top of the speaker-conditioning vector ``g``. ``0`` disables it
+            (default, backward compatible with plain/multi-speaker VITS).
+        external_speaker_embedding : bool
+            When ``True``, ``g`` is *not* looked up from ``emb_g`` via a
+            speaker id, but instead supplied directly to ``forward``/``infer``
+            as a precomputed embedding (e.g. a YourTTS d-vector). A linear
+            projection maps it from ``speaker_embedding_dim`` to
+            ``gin_channels`` when the two differ. This leaves the plain-VITS
+            ``sid``-based path (``n_speakers > 1``, ``external_speaker_embedding=False``)
+            completely unchanged.
+        speaker_embedding_dim : int
+            Dimensionality of the externally supplied speaker embedding
+            (512 for the Coqui ResNet d-vector used by YourTTS).
+        """
 
         super().__init__()
         self.n_vocab = n_vocab
@@ -566,6 +620,9 @@ class SynthesizerTrn(nn.Module):
         self.segment_size = segment_size
         self.n_speakers = n_speakers
         self.gin_channels = gin_channels
+        self.n_langs = n_langs
+        self.external_speaker_embedding = external_speaker_embedding
+        self.speaker_embedding_dim = speaker_embedding_dim
 
         self.use_sdp = use_sdp
 
@@ -578,6 +635,7 @@ class SynthesizerTrn(nn.Module):
             n_layers,
             kernel_size,
             p_dropout,
+            input_layer=make_input_layer(input_layer, input_features, hidden_channels),
         )
         self.dec = Generator(
             inter_channels,
@@ -611,16 +669,52 @@ class SynthesizerTrn(nn.Module):
                 hidden_channels, 256, 3, 0.5, gin_channels=gin_channels
             )
 
-        if n_speakers > 1:
+        if n_speakers > 1 and not external_speaker_embedding:
             self.emb_g = nn.Embedding(n_speakers, gin_channels)
 
-    def forward(self, x, x_lengths, y, y_lengths, sid=None):
+        if external_speaker_embedding and gin_channels != 0:
+            # Projects an externally-computed speaker embedding (e.g. a
+            # YourTTS d-vector) into the conditioning space, only when the
+            # dimensions differ (avoids an identity layer when they match).
+            if speaker_embedding_dim != gin_channels:
+                self.speaker_embedding_proj = nn.Linear(speaker_embedding_dim, gin_channels)
+            else:
+                self.speaker_embedding_proj = None
+
+        if n_langs > 1 and gin_channels != 0:
+            self.emb_l = nn.Embedding(n_langs, gin_channels)
+
+    def _speaker_embedding_to_g(self, speaker_embedding):
+        """Project an external [b, speaker_embedding_dim] embedding to [b, gin_channels, 1]."""
+        g = speaker_embedding
+        if getattr(self, "speaker_embedding_proj", None) is not None:
+            g = self.speaker_embedding_proj(g)
+        return g.unsqueeze(-1)
+
+    def _compute_g(self, sid=None, speaker_embedding=None, lid=None):
+        """
+        Resolve the conditioning vector ``g`` from either a speaker id
+        (plain multi-speaker VITS) or an external speaker embedding
+        (YourTTS d-vector), optionally summed with a language embedding.
+        """
+        g = None
+        if self.external_speaker_embedding:
+            if speaker_embedding is not None:
+                g = self._speaker_embedding_to_g(speaker_embedding)
+        elif self.n_speakers > 1:
+            assert sid is not None, "Missing speaker id"
+            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
+
+        if getattr(self, "emb_l", None) is not None and lid is not None:
+            g_lang = self.emb_l(lid).unsqueeze(-1)
+            g = g_lang if g is None else g + g_lang
+
+        return g
+
+    def forward(self, x, x_lengths, y, y_lengths, sid=None, speaker_embedding=None, lid=None):
 
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-        if self.n_speakers > 1:
-            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
-        else:
-            g = None
+        g = self._compute_g(sid=sid, speaker_embedding=speaker_embedding, lid=lid)
 
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
         z_p = self.flow(z, y_mask, g=g)
@@ -687,13 +781,11 @@ class SynthesizerTrn(nn.Module):
         length_scale=1,
         noise_scale_w=0.8,
         max_len=None,
+        speaker_embedding=None,
+        lid=None,
     ):
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-        if self.n_speakers > 1:
-            assert sid is not None, "Missing speaker id"
-            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
-        else:
-            g = None
+        g = self._compute_g(sid=sid, speaker_embedding=speaker_embedding, lid=lid)
 
         if self.use_sdp:
             logw = self.dp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)

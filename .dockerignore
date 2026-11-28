@@ -1,0 +1,11 @@
+.git
+.github
+docs
+tests
+**/__pycache__
+*.py[cod]
+.pytest_cache
+*.egg-info
+.venv
+TODO.md
+ROADMAP.md

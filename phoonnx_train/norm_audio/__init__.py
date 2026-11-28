@@ -31,7 +31,7 @@ def cache_norm_audio(
     window_length: int = 1024,
     hop_length: int = 256,
     ignore_cache: bool = False,
-) -> Tuple[Path, Path]:
+) -> Tuple[Path, Path, int]:
     audio_path = Path(audio_path).absolute()
     cache_dir = Path(cache_dir)
 
@@ -73,7 +73,11 @@ def cache_norm_audio(
         audio_norm_tensor = torch.FloatTensor(audio_norm_array).unsqueeze(0)
         torch.save(audio_norm_tensor, audio_norm_path)
 
-    # Compute spectrogram
+    # Compute spectrogram. The frame count goes back to the caller with the
+    # paths: whoever needs it downstream would otherwise read every cached
+    # spectrogram back off disk to ask its last dimension, and that read is
+    # serial while this is not.
+    audio_spec_tensor: Optional[torch.FloatTensor] = None
     if ignore_cache or (not audio_spec_path.exists()):
         if audio_norm_tensor is None:
             # Load pre-cached normalized audio
@@ -89,4 +93,9 @@ def cache_norm_audio(
         ).squeeze(0)
         torch.save(audio_spec_tensor, audio_spec_path)
 
-    return audio_norm_path, audio_spec_path
+    if audio_spec_tensor is None:
+        # A cache hit still has to read the file to know its length, but here
+        # that happens in whichever worker owns this utterance.
+        audio_spec_tensor = torch.load(audio_spec_path, map_location="cpu")
+
+    return audio_norm_path, audio_spec_path, audio_spec_tensor.size(-1)

@@ -1,0 +1,32 @@
+{
+    "edwixx/pt-BR-rapido": {
+        "voice_id": "edwixx/pt-BR-rapido",
+        "model_url": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "graphemes",
+        "alphabet": "unicode",
+        "engine": "rapido",
+        "lang": "pt-BR",
+        "aux_model_urls": {
+            "text_encoder_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/text_encoder.onnx",
+            "aligner_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/aligner.onnx",
+            "decoder_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/decoder.onnx"
+        },
+        "display_name": "Rápido pt-BR",
+        "variants": {
+            "int8": {
+                "model_url": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/model_int8.onnx",
+                "config_url": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/config.json",
+                "aux_model_urls": {
+                    "text_encoder_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/text_encoder.onnx",
+                    "aligner_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/aligner.onnx",
+                    "decoder_path": "https://huggingface.co/Phoonnx/rapido-pt_br-edwixx-graphemes/resolve/a8acd770982817a882462637af8e5183ff640d37/decoder.onnx"
+                }
+            }
+        }
+    }
+}

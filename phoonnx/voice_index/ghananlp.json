@@ -1,0 +1,51 @@
+{
+  "ghananlpcommunity/stable-twi-tts": {
+    "voice_id": "ghananlpcommunity/stable-twi-tts",
+    "model_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/6db188d8fd4964741827c9029c412ff081e4f1d4/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/vits-tw-stable-espeak/resolve/6db188d8fd4964741827c9029c412ff081e4f1d4/phoonnx.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "espeak",
+    "alphabet": "ipa",
+    "engine": "piper",
+    "lang": "tw",
+    "phonemizer_lang": "lfn",
+    "display_name": "Twi (stable-twi-tts, {engine})"
+  },
+  "ghananlpcommunity/nano-twi": {
+    "voice_id": "ghananlpcommunity/nano-twi",
+    "model_url": "https://huggingface.co/Phoonnx/matcha-tw-ghananlpcommunity-nano-espeak/resolve/d61277fcd46056fd9f089c72ea9835131500c184/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/matcha-tw-ghananlpcommunity-nano-espeak/resolve/d61277fcd46056fd9f089c72ea9835131500c184/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "espeak",
+    "alphabet": "ipa",
+    "engine": "matcha",
+    "lang": "tw",
+    "phonemizer_lang": "lfn",
+    "vocoder_url": "https://huggingface.co/Phoonnx/matcha-tw-ghananlpcommunity-nano-espeak/resolve/d61277fcd46056fd9f089c72ea9835131500c184/vocoder.onnx",
+    "vocoder_config_url": null,
+    "vocoder_type": "vocos",
+    "display_name": "Twi (nano-twi, {engine})"
+  },
+  "ghananlpcommunity/poto-tts-kokoro-gh": {
+    "voice_id": "ghananlpcommunity/poto-tts-kokoro-gh",
+    "model_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/30a0b59b95256b131d0b88780825652826730a00/model.onnx",
+    "config_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/30a0b59b95256b131d0b88780825652826730a00/config.json",
+    "vocab_url": null,
+    "tokenizer_config_url": null,
+    "tokens_url": null,
+    "phoneme_map_url": null,
+    "phoneme_type": "espeak",
+    "alphabet": "ipa",
+    "engine": "styletts2",
+    "lang": "en-GH",
+    "phonemizer_lang": "en-gb",
+    "style_url": "https://huggingface.co/Phoonnx/styletts2-en_gh-poto_kokoro-espeak/resolve/30a0b59b95256b131d0b88780825652826730a00/voices/bf_alice.bin",
+    "display_name": "Ghanaian English (poto-tts Kokoro, {engine})"
+  }
+}

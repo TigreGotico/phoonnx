@@ -1,14 +1,753 @@
+import contextlib
+import contextvars
+import copy
+import functools
+import hashlib
+import itertools
 import json
 import os
-from dataclasses import dataclass, field
+import posixpath
+import re
+import tempfile
+import threading
+import warnings
+from dataclasses import asdict, dataclass, field, fields, replace
+from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Iterator, List, Any, Callable, Sequence, Set, Tuple
+from urllib.parse import quote, unquote
 import requests
-from json_database import JsonStorageXDG, JsonStorage
+from huggingface_hub import constants as hub_constants, hf_hub_download
+from huggingface_hub.constants import HF_HUB_CACHE
+from huggingface_hub.errors import (EntryNotFoundError, LocalEntryNotFoundError,
+                                    OfflineModeIsEnabled, RepositoryNotFoundError,
+                                    RevisionNotFoundError)
+from json_database import JsonStorageXDG, JsonStorage, load_commented_json
+from linguatag import lang_distance
 
-from phoonnx.config import PhonemeType, get_phonemizer, VoiceConfig, Engine, Alphabet
-from phoonnx.util import match_lang, normalize_lang, LOG
-from phoonnx.voice import TTSVoice
+from phoonnx.config import (PhonemeType, _removal_version, VoiceConfig, Engine,
+                            Alphabet, check_lang_supported)
+from phoonnx.util import is_arabic, match_lang, normalize_lang, LOG
+from phoonnx.providers import ProviderSpec, make_session, resolve_providers, resolve_threads, uses_gpu
+from phoonnx.engines import get_adapter
+from phoonnx.voice import TTSVoice, check_num_symbols, streaming_graphs
+from phoonnx._onnx_external import external_data_locations
+from phoonnx.errors import PrecisionUnavailable, UnknownVoice
+
+
+def _tmp_path(dest: Path) -> Path:
+    """Sibling scratch path used while a download is in flight.
+
+    The name is unique per call rather than "<target>.part": two fetches of the
+    same artifact would otherwise share one temporary file, interleaving their
+    bytes, and whichever lost the race would find it already renamed away.
+
+    Every write goes through here, so this is also where the voice directory is
+    created — a voice's directory should exist because something was written
+    into it, not because its catalog entry was constructed.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    handle, tmp = tempfile.mkstemp(dir=dest.parent, prefix=dest.name + ".",
+                                   suffix=".part")
+    os.close(handle)
+    # mkstemp creates 0600 and os.replace carries the mode onto the artifact.
+    # Models are read by whoever serves them, which is not always the account
+    # that downloaded them: a shared HF_HOME, or a prefetch run as another user.
+    umask = os.umask(0)
+    os.umask(umask)
+    os.chmod(tmp, 0o666 & ~umask)
+    return Path(tmp)
+
+
+def _parses(path: str) -> bool:
+    """Whether the index on disk is readable, by reading it.
+
+    An empty registry has two causes that look identical in memory: a file that
+    is genuinely empty, and one the storage layer could not parse. Only the
+    second is worth telling an operator about, and a size comparison answers
+    neither — ``{}\n`` is three bytes and perfectly valid, an empty file is
+    zero and is not.
+    """
+    try:
+        load_commented_json(path)
+        return True
+    except Exception:
+        return False
+
+
+def _is_cached(path: Path) -> bool:
+    """A cached artifact counts only if it exists and is non-empty."""
+    try:
+        return path.is_file() and path.stat().st_size > 0
+    except OSError:
+        return False
+
+
+# The hub is asked for a file's metadata before its body. That call is one
+# small request, so it should give up long before the body timeout would: a
+# blackholed network otherwise stalls the caller for the full body budget
+# before the download it is blocking has even started.
+_ETAG_TIMEOUT = 10
+
+
+def _sidecar_url(url: str) -> str:
+    """The external-weights URL for ``url``, keeping any query intact.
+
+    The suffix belongs on the path, not on the end of the string: appending it
+    to ``model.onnx?download=true`` yields ``download=true_data``, a query the
+    hub ignores, so the request comes back as the graph itself. The sidecar
+    then looks like it was fetched when it never was, and the graph is handed
+    to onnxruntime with its weights missing.
+    """
+    head, sep, tail = url.partition("?")
+    return f"{head}_data{sep}{tail}"
+
+
+def _sidecar_urls(url: str, graph: Optional[Path]) -> List[str]:
+    """The URLs of the external-data files that the graph at ``graph`` names.
+
+    onnxruntime reads each file from the folder of the graph, by the name the
+    graph gives it, so the files come from the folder of ``url``. Exporters do
+    not agree on the names: ``model.onnx_data``, a series ``model.onnx_data_1``
+    to ``_6``, ``model_int8.onnx.data`` from onnxruntime quantization. Only a
+    graph that cannot be read falls back to the ``<graph>_data`` guess.
+
+    Raises:
+        ValueError: the graph names a file outside its own folder.
+    """
+    if graph is None:
+        return [_sidecar_url(url)]
+    try:
+        locations = external_data_locations(graph)
+    except (OSError, ValueError) as e:
+        LOG.debug(f"cannot read the external-data names of '{url}', "
+                  f"guessing '<graph>_data': {e}")
+        return [_sidecar_url(url)]
+    head, sep, tail = url.partition("?")
+    folder = head.rsplit("/", 1)[0]
+    for location in locations:
+        parts = location.replace("\\", "/").split("/")
+        if parts[0] == "" or ":" in parts[0] or ".." in parts:
+            raise ValueError(f"'{url}' names external data outside its folder: "
+                             f"{location!r}")
+    if not _HF_URL.match(head):
+        # a location is a literal file name, and a URL reads %, # and ? as syntax
+        locations = [quote(location, safe="/") for location in locations]
+    return [f"{folder}/{location}{sep}{tail}" for location in locations]
+
+
+def _expected_size(response) -> Optional[int]:
+    """Content-Length of a response, or None when absent/unusable.
+
+    A compressed response is a deliberate ``None``: ``Content-Length`` then
+    counts the bytes on the wire, while the stream below yields the decoded
+    body, so comparing the two condemns a download that arrived intact.
+    """
+    try:
+        headers = response.headers
+    except AttributeError:
+        return None
+    try:
+        encoding = (headers.get("Content-Encoding") or "").strip().lower()
+    except AttributeError:
+        encoding = ""
+    if encoding and encoding != "identity":
+        return None
+    raw = headers.get("Content-Length")
+    if not isinstance(raw, (str, int)) or isinstance(raw, bool):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+
+def _direct_stream(url: str, dest: Path, timeout: int = 120) -> Path:
+    """Stream ``url`` into ``dest`` atomically, outside the shared cache.
+
+    The body is written to a sibling ``.part`` file and only renamed onto
+    ``dest`` once it has been fully received (and matches ``Content-Length``,
+    when the server sends one), so no run ever sees a truncated artifact. A
+    download that fails or is interrupted removes its own scratch file; one
+    killed outright — SIGKILL, OOM, power loss — leaves it behind, and nothing
+    reclaims it, because a sweep on entry cannot tell an abandoned file from
+    one another download is still writing.
+
+    This is the path for a self-hosted or mirrored voice, which the hub client
+    cannot serve. It gets a private copy.
+    """
+    tmp = _tmp_path(dest)
+    written = 0
+    try:
+        with requests.get(url, timeout=timeout, stream=True) as r:
+            r.raise_for_status()
+            expected = _expected_size(r)
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        written += len(chunk)
+        if expected is not None and written != expected:
+            raise IOError(f"incomplete download for '{url}': "
+                          f"got {written} bytes, expected {expected}")
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    os.replace(tmp, dest)
+    return dest
+
+
+def _direct_dir(url: str) -> Path:
+    """Where a file the hub cannot serve is kept.
+
+    Self-hosted and mirrored voices still have to land somewhere, and that
+    somewhere has the same requirement as a hub snapshot: a graph and the
+    external-data sidecar it names must share one directory, or onnxruntime
+    refuses to follow the reference. The directory is keyed by the URL's own
+    directory, so files published together stay together.
+
+    It lives inside the HuggingFace cache, not in a phoonnx-owned one. There is
+    exactly one place voice files are kept, and ``HF_HOME`` moves all of it.
+    """
+    base = url.split("?")[0].rsplit("/", 1)[0]
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:32]
+    return Path(HF_HUB_CACHE) / "phoonnx-direct" / digest
+
+
+def _direct_path(url: str, graph_url: Optional[str] = None) -> Path:
+    """Where the file at a URL the hub cannot serve is kept.
+
+    The external data of a graph keeps its place relative to the graph, also in a
+    subfolder, because onnxruntime reads it there. ``graph_url`` names that graph.
+    """
+    head = url.split("?")[0]
+    if graph_url is None:
+        return _direct_dir(url) / (head.rsplit("/", 1)[-1] or "artifact")
+    folder = graph_url.split("?")[0].rsplit("/", 1)[0]
+    return _direct_dir(graph_url) / unquote(head[len(folder) + 1:])
+
+
+def _resolve(url: str, timeout: int = 120, graph_url: Optional[str] = None) -> Path:
+    """Give the local path of ``url``, downloading it once.
+
+    Hub files are fetched with the hub client and used exactly where it puts
+    them: one copy per file and revision, in the cache the rest of the machine
+    already shares, so a model named by hundreds of voices is stored once and a
+    model another program has already pulled is not pulled again. Nothing is
+    copied or linked out of it — a graph that names an external-data sidecar
+    only loads from the directory that holds both, and that is the hub's.
+
+    A URL the hub cannot serve is streamed into :func:`_direct_dir` instead,
+    with a warning, because breaking self-hosted voices costs more than the
+    duplicate copy they keep. ``graph_url`` names the graph whose external data
+    ``url`` is, so the file lands beside it (:func:`_direct_path`).
+
+    Raises:
+        huggingface_hub.errors.EntryNotFoundError: no such file on the hub.
+        requests.exceptions.RequestException: the direct download failed.
+    """
+    cached = _hf_fetch(url, timeout)
+    if cached is not None:
+        return cached
+    LOG.warning(f"not a HuggingFace file URL, so this download is a private copy "
+                f"that no other voice or program can share: {url}")
+    dest = _direct_path(url, graph_url)
+    if _is_cached(dest):
+        return dest
+    return _direct_stream(url, dest, timeout)
+
+
+_HF_URL = re.compile(
+    r"https?://huggingface\.co/(?P<repo>[^/]+/[^/]+)/(?:resolve|raw)/(?P<rev>[^/]+)/(?P<path>.+)")
+
+# Raised by the hub client when the file, not the network, is the problem, and
+# when the client is offline with nothing cached. Both mean "no file here".
+_NO_SUCH_FILE = (EntryNotFoundError, OfflineModeIsEnabled, LocalEntryNotFoundError)
+
+
+# The Phoonnx repos lived in OpenVoiceOS under the same names, so a voice fetched before the
+# move sits in the cache under the old repo id. While the cache holds the repo under that id,
+# every file of the repo is fetched through it: offline it loads from that cache, online the
+# Hub redirect serves the current Phoonnx file into the same folder, as before the move. The
+# choice is per repo, never per file, so a graph and its weights files share one folder, a
+# commit to the moved repo does not make the cached files look missing, and a file another
+# tool fetched under the new id does not cut the voice off from its cache. Drop this once
+# a stable release has shipped the Phoonnx URLs for a full release cycle.
+_MOVED_FROM = {"Phoonnx": "OpenVoiceOS"}
+# Repos that also changed name: current id -> the ids it had before, newest first.
+_RENAMED_FROM: Dict[str, List[str]] = json.loads(
+    (Path(__file__).parent / "moved_repos.json").read_text(encoding="utf-8"))
+# Each model of a Phoonnx mirror repo (Phoonnx/phoonnx-<family>) has a repo of its own, with the
+# model's folder at the repo root. The table maps such a repo to its mirror, the folder, the mirror
+# commit the index pinned (rev), and the files that keep their mirror path (kept: shared files from
+# outside the folder). "also" lists other mirror folders that served the same files, each with its
+# commit and its own repo path -> mirror path map. The mirrors are to be deleted, so a voice is
+# fetched through a mirror only while the cache holds every file the voice names there; a voice
+# the cache does not hold comes from its own repo.
+_SPLIT_FROM: Dict[str, Dict[str, Any]] = json.loads(
+    (Path(__file__).parent / "split_repos.json").read_text(encoding="utf-8"))
+
+
+def _earlier_ids(repo_id: str) -> List[str]:
+    """Every id the repo had before, newest first."""
+    if repo_id in _RENAMED_FROM:
+        return _RENAMED_FROM[repo_id]
+    org, name = repo_id.split("/", 1)
+    return [f"{_MOVED_FROM[org]}/{name}"] if org in _MOVED_FROM else []
+
+
+def _repo_cached_before_move(repo_id: str) -> Optional[str]:
+    """The newest old repo id that the cache holds the repo under. Reads no network."""
+    return next((old for old in _earlier_ids(repo_id)
+                 if (Path(HF_HUB_CACHE) / f"models--{old.replace('/', '--')}").is_dir()), None)
+
+
+_Route = Tuple[str, str, str, Dict[str, str]]
+
+
+def _mirror_route(repo_id: str, filenames: Set[str]) -> Optional[_Route]:
+    """The (mirror id, mirror commit, mirror folder, repo path -> mirror path) through which the
+    cache holds every one of ``filenames`` of the split repo ``repo_id``, in one snapshot.
+    Reads no network."""
+    split = _SPLIT_FROM.get(repo_id)
+    if not split:
+        return None
+    kept = split.get("kept", ())
+    main = {name: name if name in kept else f"{split['folder']}/{name}" for name in filenames}
+    ways = [(split["rev"], split["folder"], main)] + [
+        (other["rev"], posixpath.dirname(next(iter(other["paths"].values()))), other["paths"])
+        for other in split.get("also", ())]
+    for mirror in [split["from"], *_earlier_ids(split["from"])]:
+        snapshot_dir = Path(HF_HUB_CACHE) / f"models--{mirror.replace('/', '--')}" / "snapshots"
+        snapshots = list(snapshot_dir.glob("*"))
+        for rev, folder, paths in ways:
+            if not filenames <= paths.keys():
+                continue
+            wanted = [paths[name] for name in filenames]
+            # The download reads the snapshot at ``rev`` first, so a partial one there is the
+            # only one that counts, as in ``_voice_snapshot``.
+            pinned = snapshot_dir / rev
+            candidates = [pinned] if any((pinned / path).exists() for path in wanted) else snapshots
+            if any(_holds(snapshot, wanted) for snapshot in candidates):
+                return mirror, rev, folder, paths
+    return None
+
+
+def _holds(snapshot: Path, paths: List[str]) -> bool:
+    """Whether ``snapshot`` holds every one of ``paths`` and the external data each graph names.
+
+    A graph whose weights were cut off mid-download must not route through a mirror: once the
+    mirror is gone, the missing file would come from another repo's folder, where onnxruntime
+    does not look. A graph that cannot be read counts as holding its data.
+    """
+    for path in paths:
+        file = snapshot / path
+        if not file.exists():
+            return False
+        if path.endswith(".onnx"):
+            try:
+                locations = external_data_locations(file)
+            except (OSError, ValueError):
+                continue
+            if not all((file.parent / location).exists() for location in locations):
+                return False
+    return True
+
+
+# The voice whose scope is open.
+_VOICE_INFO: contextvars.ContextVar[Optional["TTSModelInfo"]] = \
+    contextvars.ContextVar("phoonnx_voice_info", default=None)
+
+# The mirror route of each split repo of the voice being loaded, by (repo id, pinned commit).
+_VOICE_ROUTES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Optional[_Route]]]] = \
+    contextvars.ContextVar("phoonnx_voice_routes", default=None)
+
+
+def _fetch_source(repo_id: str, revision: str, filename: str) -> Tuple[str, str, str]:
+    """The (repo id, commit, path) to fetch a hub file through. Reads no network.
+
+    A split repo goes through the mirror route that holds the voice's files (or this file,
+    outside a voice load); a file the route does not name, such as the external data of its
+    graph, follows the folder rule of the route. Any other repo goes through the newest earlier
+    id the cache holds, else its own.
+    """
+    if repo_id in _SPLIT_FROM:
+        routes = _VOICE_ROUTES.get()
+        if routes is not None and (repo_id, revision) in routes:
+            route = routes[(repo_id, revision)]
+        else:
+            route = _mirror_route(repo_id, {filename})
+        if route is None:
+            return repo_id, revision, filename
+        mirror, rev, folder, paths = route
+        if filename in paths:
+            return mirror, rev, paths[filename]
+        split = _SPLIT_FROM[repo_id]
+        if folder == split["folder"] and filename in split.get("kept", ()):
+            return mirror, rev, filename
+        return mirror, rev, f"{folder}/{filename}"
+    old = _repo_cached_before_move(repo_id)
+    return (old or repo_id), revision, filename
+
+
+# The snapshot an offline load reads in place of a pinned commit the cache does not hold. The
+# index pins every file, so a device that cached a voice at an older commit would lose it
+# offline after a pin bump; it keeps the voice it has instead. A voice load chooses one
+# snapshot per repo and commit that holds every file the voice names there
+# (_VOICE_SNAPSHOTS), so a graph and the voice state in another folder of the same repo come
+# from the same commit, and two voices cached at different commits each keep their own. A
+# file fetched outside a voice load gets one choice per cache folder, pinned commit and
+# folder inside the repo (_OFFLINE_SNAPSHOTS), never per file, so a graph and every data
+# file it names still come from the same commit.
+_VOICE_SNAPSHOTS: Dict[Tuple[Path, str, frozenset], Path] = {}
+_OFFLINE_SNAPSHOTS: Dict[Tuple[Path, str, str], Path] = {}
+
+
+# The hub files of the voice being loaded, by (repo id, pinned commit).
+_VOICE_FILES: contextvars.ContextVar[Optional[Dict[Tuple[str, str], Set[str]]]] = \
+    contextvars.ContextVar("phoonnx_voice_files", default=None)
+
+
+@contextlib.contextmanager
+def _voice_scope(info: "TTSModelInfo") -> Iterator[None]:
+    """Fetch the files of ``info`` so that an offline fallback reads them all from one commit."""
+    files: Dict[Tuple[str, str], Set[str]] = {}
+    # the vosk dictionary is optional: a load goes on without it, so it does not bind the choice
+    urls = [getattr(info, f.name) for f in fields(info)
+            if f.name.endswith("_url") and f.name != "dictionary_url"]
+    urls += list((info.aux_model_urls or {}).values())
+    named: Dict[Tuple[str, str], Set[str]] = {}
+    for url in urls:
+        match = _HF_URL.match(url.split("?")[0]) if isinstance(url, str) else None
+        if match:
+            named.setdefault((match["repo"], match["rev"]), set()).add(match["path"])
+    routes = {key: _mirror_route(key[0], paths) for key, paths in named.items() if key[0] in _SPLIT_FROM}
+    route_token = _VOICE_ROUTES.set(routes)
+    info_token = _VOICE_INFO.set(info)
+    try:
+        for (repo, rev), paths in named.items():
+            for path in paths:
+                repo_id, revision, source_path = _fetch_source(repo, rev, path)
+                files.setdefault((repo_id, revision), set()).add(source_path)
+        files_token = _VOICE_FILES.set(files)
+        try:
+            yield
+        finally:
+            _VOICE_FILES.reset(files_token)
+    finally:
+        _VOICE_ROUTES.reset(route_token)
+        _VOICE_INFO.reset(info_token)
+
+
+def _in_voice_scope(method: Callable) -> Callable:
+    """Run a :class:`TTSModelInfo` method inside :func:`_voice_scope` of its voice.
+
+    Inside a scope already open for the same voice, the routes chosen at its start stay: choosing
+    them again after some files are downloaded could send the rest of the voice elsewhere.
+    """
+    @functools.wraps(method)
+    def scoped(self, *args, **kwargs):
+        if _VOICE_INFO.get() is self:
+            return method(self, *args, **kwargs)
+        with _voice_scope(self):
+            return method(self, *args, **kwargs)
+    return scoped
+
+
+def _voice_key(repo_id: str, revision: str, filename: str) -> Optional[Tuple[Path, str, frozenset]]:
+    """The :data:`_VOICE_SNAPSHOTS` key of the voice being loaded, if it names files in ``repo_id``
+    at ``revision``.
+
+    A file the voice does not name there, such as the external data of its graph, follows the
+    same key, so it comes from the snapshot of the files beside it.
+    """
+    files = _VOICE_FILES.get()
+    wanted = files.get((repo_id, revision)) if files is not None else None
+    if not wanted:
+        return None
+    return Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}", revision, frozenset(wanted)
+
+
+def _voice_snapshot(repo_id: str, revision: str, filename: str,
+                    record: bool) -> Tuple[bool, Optional[Path]]:
+    """The fallback for ``filename`` chosen for the voice being loaded.
+
+    Returns ``(False, None)`` when no voice is being loaded or the voice names no file in
+    ``repo_id`` at ``revision``, so the folder rule decides. Otherwise the newest snapshot that
+    holds ``filename`` and every file the voice names there is chosen, and none when the
+    pinned snapshot holds one of them already, as after an interrupted download. A snapshot
+    whose graph lacks the external data it names is passed over, as in :func:`_mirror_route`.
+    """
+    key = _voice_key(repo_id, revision, filename)
+    if key is None:
+        return False, None
+    repo_dir, _, wanted = key
+    needed = wanted | {filename}
+    if any((repo_dir / "snapshots" / revision / name).exists() for name in needed):
+        return True, None
+    chosen = _VOICE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision and _holds(snapshot, list(needed))]
+        if not holding:
+            return True, None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if not record:
+            path = chosen / filename
+            return True, path if path.exists() else None
+        _VOICE_SNAPSHOTS[key] = chosen
+        LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                    f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return True, path if path.exists() else None
+
+
+def _offline_snapshot(repo_id: str, revision: str, filename: str,
+                      record: bool = True) -> Optional[Path]:
+    """The cached ``filename`` from another snapshot of ``repo_id``, for when ``revision`` is not cached.
+
+    The newest snapshot by modification time that holds ``filename``, and the external data
+    of ``filename`` when it is a graph, is chosen, never the one
+    ``refs/main`` names: a fetch at a commit writes no ref, so ``refs/main`` stays at the last
+    commit an unpinned install fetched. Later files of the same folder come from the same
+    snapshot or not at all. A folder that the pinned snapshot holds in part, as after an
+    interrupted download, never falls back, so its files cannot mix two commits. Reads no
+    network. Inside a voice load, :func:`_voice_snapshot` chooses instead.
+
+    ``record`` is False when the caller only measures: the chosen snapshot is then not
+    remembered, so a size question cannot make a voice look like it loaded from a fallback
+    it never took.
+    """
+    scoped, path = _voice_snapshot(repo_id, revision, filename, record)
+    if scoped:
+        return path
+    repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+    folder = posixpath.dirname(filename)
+    pinned_folder = repo_dir / "snapshots" / revision / folder
+    if pinned_folder.is_dir() and any(entry.is_file() for entry in pinned_folder.iterdir()):
+        return None
+    key = (repo_dir, revision, folder)
+    chosen = _OFFLINE_SNAPSHOTS.get(key)
+    if chosen is None or not chosen.is_dir():
+        holding = [snapshot for snapshot in (repo_dir / "snapshots").glob("*")
+                   if snapshot.name != revision and _holds(snapshot, [filename])]
+        if not holding:
+            return None
+        chosen = max(holding, key=lambda snapshot: snapshot.stat().st_mtime)
+        if record:
+            _OFFLINE_SNAPSHOTS[key] = chosen
+            LOG.warning(f"{repo_id} is not cached at the pinned commit {revision} and the hub cannot "
+                        f"be reached; loading the cached snapshot {chosen.name} instead")
+    path = chosen / filename
+    return path if path.exists() else None
+
+
+def _hf_fetch(url: str, timeout: int = 120) -> Optional[Path]:
+    """Give the shared HuggingFace cache path for ``url``, downloading it once.
+
+    Both hub file forms are understood: ``/resolve/<rev>/`` (the form the voice
+    index uses) and ``/raw/<rev>/``, which serves the same bytes for the small
+    text artifacts.
+
+    Returns ``None`` for a URL the hub cannot serve — a self-hosted or mirrored
+    voice. Those are rare but legitimate, so the caller downloads them
+    directly; they just do not get the deduplication.
+    """
+    match = _HF_URL.match(url.split("?")[0])
+    if not match:
+        return None
+    repo_id, revision, path = _fetch_source(match["repo"], match["rev"], match["path"])
+    try:
+        return Path(hf_hub_download(repo_id=repo_id,
+                                    filename=path,
+                                    revision=revision,
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+    except (LocalEntryNotFoundError, OfflineModeIsEnabled) as error:
+        # offline, or the hub did not answer, and the cache lacks this commit
+        fallback = _offline_snapshot(repo_id, revision, path)
+        if fallback is None:
+            # after an upgrade the index can name a file, such as phoonnx.json, that no
+            # cached snapshot holds; the hub client's own message does not say so
+            raise LocalEntryNotFoundError(
+                f"{path} of {repo_id} at commit {revision} is not in the hub cache, and the hub "
+                f"cannot be reached. Connect once so that phoonnx can download it. After a phoonnx "
+                f"upgrade, the voice index can name a file that no cached snapshot holds.") from error
+        return fallback
+    except (RepositoryNotFoundError, RevisionNotFoundError, EntryNotFoundError):
+        if (repo_id, revision, path) == (match["repo"], match["rev"], match["path"]):
+            raise
+        # a deleted mirror: the cached copy, else the repo the index names
+        fallback = _offline_snapshot(repo_id, revision, path)
+        if fallback is not None:
+            return fallback
+        return Path(hf_hub_download(repo_id=match["repo"],
+                                    filename=match["path"],
+                                    revision=match["rev"],
+                                    etag_timeout=min(timeout, _ETAG_TIMEOUT)))
+
+
+def _cached_path(url: str, graph_url: Optional[str] = None) -> Optional[Path]:
+    """Local path of ``url`` if it is already downloaded, else None.
+
+    Never touches the network: this answers "how big is what we already
+    fetched", and a size question must not be able to start a download or
+    block on a hub that is slow to answer.
+    """
+    if not url:
+        return None
+    match = _HF_URL.match(url.split("?")[0])
+    if match:
+        repo_id, revision, path = _fetch_source(match["repo"], match["rev"], match["path"])
+        try:
+            return Path(hf_hub_download(repo_id=repo_id,
+                                        filename=path,
+                                        revision=revision,
+                                        local_files_only=True))
+        except Exception:
+            pass
+        # A fallback that _hf_fetch took is what loaded, also when HF_HUB_OFFLINE is
+        # unset and the hub was unreachable, so its file is the one to measure.
+        repo_dir = Path(HF_HUB_CACHE) / f"models--{repo_id.replace('/', '--')}"
+        key = _voice_key(repo_id, revision, path)
+        chosen = _VOICE_SNAPSHOTS.get(key) if key is not None else None
+        if chosen is None:
+            chosen = _OFFLINE_SNAPSHOTS.get((repo_dir, revision, posixpath.dirname(path)))
+        if chosen is not None:
+            cached = chosen / path
+            if cached.exists():
+                return cached
+        if not hub_constants.HF_HUB_OFFLINE:
+            return None
+        try:
+            return _offline_snapshot(repo_id, revision, path, record=False)
+        except OSError:
+            return None
+    dest = _direct_path(url, graph_url)
+    return dest if _is_cached(dest) else None
+
+
+def _file_bytes(*urls: str) -> int:
+    """On-disk size of the cached copies of ``urls`` and of their external data.
+
+    A file counts once, also when two URLs name it, or a URL and a graph that
+    keeps its weights in it.
+    """
+    files = set()
+    for url in urls:
+        graph = _cached_path(url)
+        if graph is None:
+            continue
+        sidecars = []
+        if url.split("?")[0].endswith(".onnx"):  # only a graph has external data
+            try:
+                sidecars = _sidecar_urls(url, graph)
+            except ValueError:
+                pass
+        for path in [graph, *(_cached_path(sidecar, graph_url=url) for sidecar in sidecars)]:
+            if path is not None:
+                files.add(os.path.realpath(path))
+    total = 0
+    for path in files:
+        try:
+            total += os.stat(path).st_size
+        except OSError:
+            continue
+    return total
+
+
+def _read_json(path: Path) -> Any:
+    """Parse the JSON at ``path``."""
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+#: The values of the ``precision`` setting. ``int8`` and ``full`` name the
+#: files to load; ``auto`` lets :func:`choose_precision` pick one of them.
+PRECISIONS = ("int8", "full", "auto")
+DEFAULT_PRECISION = "auto"
+#: Environment variable that sets the precision when no argument and no
+#: plugin key sets it.
+PRECISION_ENV_VAR = "PHOONNX_PRECISION"
+
+
+def resolve_precision(precision: Optional[str] = None) -> str:
+    """The precision setting in force: the argument, else the env var, else ``auto``.
+
+    The argument is the load kwarg or the plugin key ``precision``; the plugin
+    passes its key as the argument, so a kwarg and a plugin key never meet.
+    ``None`` and an empty string count as unset. Case and surrounding spaces
+    are ignored.
+
+    Raises:
+        ValueError: the value is not a string, or not one of :data:`PRECISIONS`.
+    """
+    if precision is not None and not isinstance(precision, str):
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {precision!r}")
+    value = (precision or "").strip() or os.environ.get(PRECISION_ENV_VAR, "").strip()
+    value = value.lower() or DEFAULT_PRECISION
+    if value not in PRECISIONS:
+        raise ValueError(f"precision must be one of {', '.join(PRECISIONS)}, not {value!r}")
+    return value
+
+
+def choose_precision(info: "TTSModelInfo", precision: str,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> str:
+    """Which files of ``info`` load under ``precision``: ``int8`` or ``full``.
+
+    ``int8`` and ``full`` raise :class:`PrecisionUnavailable` when the entry has
+    no such files. ``auto`` picks int8 only for an int8 variant marked
+    ``"auto": true`` while no GPU provider is in the resolved providers; an
+    entry that has only int8 files loads them. In every other case ``auto``
+    picks full.
+    """
+    int8_only = info.precision == "int8"
+    variant = (info.variants or {}).get("int8")
+    if precision == "int8":
+        if int8_only or variant:
+            return "int8"
+        raise PrecisionUnavailable(info.voice_id, "int8")
+    if precision == "full":
+        if int8_only:
+            raise PrecisionUnavailable(info.voice_id, "full")
+        return "full"
+    if int8_only:
+        return "int8"
+    if variant and variant.get("auto") is True and not uses_gpu(resolve_providers(providers)):
+        return "int8"
+    return "full"
+
+
+#: Voice ids folded into another voice as one of its precisions:
+#: old id -> (voice id, precision).
+_PRECISION_ALIASES = {
+    "edwixx/pt-BR-rapido-int8": ("edwixx/pt-BR-rapido", "int8"),
+}
+# Aliases already named in the log. A plugin looks a voice up for every
+# sentence, and one log line per process is enough.
+_LOGGED_ALIASES: set = set()
+# Index keys this release does not know, already named in the log.
+_LOGGED_UNKNOWN_KEYS: set = set()
+
+
+def _alias_info(voice_id: str, lookup: Callable[[str], Optional["TTSModelInfo"]]
+                ) -> Optional["TTSModelInfo"]:
+    """The entry an old precision id names, with a deprecation warning.
+
+    The entry keeps the old id, so a caller that looks the voice up again by
+    the id it got back finds the same files.
+    """
+    target, precision = _PRECISION_ALIASES[voice_id]
+    info = lookup(target)
+    if info is None:
+        return None
+    message = (f"voice id {voice_id!r} is deprecated and will be removed in phoonnx "
+               f"{_removal_version()}; use {target!r} with precision {precision!r}")
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    if voice_id not in _LOGGED_ALIASES:
+        _LOGGED_ALIASES.add(voice_id)
+        LOG.warning(message)
+    return replace(info.with_precision(precision), voice_id=voice_id)
 
 
 @dataclass
@@ -21,75 +760,146 @@ class TTSModelInfo:
     tokenizer_config_url: Optional[str] = None  # transformers provides tokenizer_config.json with metadata
     tokens_url: Optional[str] = None  # mimic3/sherpa provide phoneme_map in this format
     phoneme_map_url: Optional[str] = None  # json lookup table for phoneme replacement
+    dictionary_url: Optional[str] = None  # vosk: word -> phonemes pronunciation dictionary
     phoneme_type: Optional[PhonemeType] = None
+    phonemizer_model: Optional[str] = None  # per-phonemizer variant (e.g. AhoTTS classic/modern/northern)
     alphabet: Optional[Alphabet] = None
     engine: Optional[Engine] = None
     vocab_override: Optional[Dict[str, int]] = field(default_factory=dict)
 
+    # Two-stage engines (Matcha-TTS) pair the acoustic model with a *separate*
+    # vocoder published as its own artifact.  These fields link the tested
+    # vocoder for this voice; the manager downloads it alongside the model.
+    vocoder_url: Optional[str] = None
+    vocoder_config_url: Optional[str] = None
+    vocoder_type: Optional[str] = None  # "vocos" | "wavenext" | "hifigan"
+
+    # StyleTTS2/Kokoro carry a per-voice *style* embedding (Kokoro: a [510, 256]
+    # pack indexed by token length). The manager downloads it alongside the model
+    # and the StyleTTS2 adapter loads it from engine_params["style_path"].
+    style_url: Optional[str] = None
+
+    # Cloning models (YourTTS) carry a separate speaker-encoder ONNX (reference audio
+    # -> d-vector); the manager downloads it and the adapter loads it from
+    # engine_params["speaker_encoder_path"].
+    speaker_encoder_url: Optional[str] = None
+    speaker_encoder_type: Optional[str] = None
+
+    # Multi-graph iterative engines (F5-TTS) split inference across several
+    # ONNX files beyond the primary model.onnx. Each entry maps an
+    # engine_params key (e.g. "preprocess_path", "decode_path") to the URL of
+    # that graph; the manager downloads each one alongside the model and
+    # injects the local path under the same key.
+    aux_model_urls: Optional[Dict[str, str]] = field(default_factory=dict)
+    # Chatterbox (autoregressive codec-LM) splits inference across four graphs: the
+    # language_model is `model_url`; these three aux graphs load from engine_params
+    # (speech_encoder_path / embed_tokens_path / conditional_decoder_path).
+    speech_encoder_url: Optional[str] = None
+    embed_tokens_url: Optional[str] = None
+    conditional_decoder_url: Optional[str] = None
+
+    # Free-form engine settings that are plain values rather than downloadable files
+    # (``aux_model_urls`` covers the files). Merged into ``engine_params()`` as-is, so an
+    # index entry can pin a per-voice knob the adapter reads — e.g. NeuTTS voices, which
+    # all share one checkpoint and differ only by which ``voices.json`` preset they use.
+    engine_options: Optional[Dict[str, Any]] = field(default_factory=dict)
+
+    # Optional BCP47 -> language-token map: how this voice's lang_code becomes the model's
+    # language token. A dialect model can reuse another language's token (lahgtna reads
+    # Egyptian Arabic under "ms"), so the token is mapped here rather than derived from the lang code.
+    lang_tokens: Optional[Dict[str, str]] = None
+
+    # user-friendly name for UIs/CLIs; may contain "{engine}"/"{phoneme_type}"
+    # placeholders that get resolved once those fields are known
+    display_name: Optional[str] = None
+
+    # True when this voice cannot synthesize from a bare (text, lang) request:
+    # it needs a caller-supplied reference (e.g. a cloning engine's
+    # ``reference_audio``, or a StyleTTS2/Kokoro graph with no baked-in style
+    # and no ``engine_params['style_path']``). A catalog sweep can use this to
+    # skip these voices instead of rediscovering the same failures every run.
+    requires_reference: bool = False
+
+    # The phonemizer's language, when it differs from the catalogue ``lang``: an entry
+    # may carry a code no phonemizer serves ("tdt-TL") for a model trained with another
+    # phonemizer voice (Portuguese espeak).
+    phonemizer_lang: Optional[str] = None
+
+    # The precision of the files this entry names: "int8" for an entry that has
+    # only int8 files, unset for full files.
+    precision: Optional[str] = None
+    # Other precisions of the same voice. ``{"int8": {...}}`` holds only the URL
+    # fields that differ from this entry, and ``"auto": true`` when the
+    # ``auto`` precision may pick it. See :meth:`with_precision`.
+    variants: Optional[Dict[str, Dict[str, Any]]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Every field as in the bundled voice-index JSON files, enums as their values."""
+        d = asdict(self)
+        for k, v in d.items():
+            if isinstance(v, Enum):
+                d[k] = v.value
+        return d
+
     @property
     def config(self) -> VoiceConfig:
-        # lazy loaded
-        """
-        Return the model's VoiceConfig, loading and synchronizing it on first access.
-        
-        On first access, load or construct a VoiceConfig from cached files or remote URLs and apply any provided vocab, tokenizer, or tokens overrides; normalize and propagate language, alphabet, phoneme type, and engine values between the dataclass and the loaded config. Subsequent accesses return the cached VoiceConfig.
-        
-        Returns:
-            VoiceConfig: The loaded and normalized voice configuration instance.
+        """The voice's VoiceConfig, loaded on first access.
+
+        A voice with a config.json takes its engine, phoneme_type, alphabet and
+        phonemizer_model from that file; the index copies of these fields are
+        catalogue data. A voice with no config.json takes them from the index.
         """
         if not self._config:
+            options: Dict[str, Any] = {
+                "lang_code": normalize_lang(self.lang, default_region=False) if self.lang else None,
+                "phonemizer_lang": self.phonemizer_lang,
+            }
             if self.config_url:
                 config = self.download_config()
-                # HACK: seen in some published piper voices
-                # "es_MX-ald-medium"
-                if config.get('phoneme_type', "") == "PhonemeType.ESPEAK":
+                # some published piper voices (es_MX-ald-medium) store the enum repr
+                if config.get("phoneme_type", "") == "PhonemeType.ESPEAK":
                     config["phoneme_type"] = "espeak"
             else:
-                config = {"phoneme_type": "graphemes", "alphabet": "unicode"}
-            if self.phoneme_type:
-                config["phoneme_type"] = self.phoneme_type
-
-            lang_code = normalize_lang(self.lang) if self.lang else None
-            alphabet = self.alphabet if self.alphabet else None
-            phoneme_type = self.phoneme_type if self.phoneme_type else None
-            engine = self.engine if self.engine else None
-
-            if self.vocab_override:
-                self._config = VoiceConfig.from_dict(config,
-                                                     vocab=self.vocab_override,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     lang_code=lang_code)
+                config = {"phoneme_type": self.phoneme_type or "graphemes", "alphabet": "unicode"}
+                if self.phonemizer_model:
+                    config["phonemizer_model"] = self.phonemizer_model
+                options.update(engine=self.engine, alphabet=self.alphabet, phoneme_type=self.phoneme_type)
+            # A vosk pronunciation dictionary is a file of the index entry, and its
+            # local path is the phonemizer_model. A failed fetch leaves it unset.
+            if self.dictionary_url and not config.get("phonemizer_model"):
+                dict_path = self.download_dictionary()
+                if dict_path:
+                    config["phonemizer_model"] = self.phonemizer_model = str(dict_path)
+            if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
+                # Chatterbox carries its own subword BPE (tokenizer.json); no vocab/tokens.
+                tok_json = self.download_bpe_tokenizer()
+                options["bpe_tokenizer_json"] = str(tok_json) if tok_json else None
+                options["lang_tokens"] = self.lang_tokens
+            elif self.vocab_override:
+                options["vocab"] = self.vocab_override
             elif self.vocab_url:
-                vocab = self.download_vocab()
-                if self.tokenizer_config_url:
-                    tokenizer_config = self.download_tokenizer_config()
-                else:
-                    tokenizer_config = {}
-                self._config = VoiceConfig.from_dict(config,
-                                                     vocab=vocab,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     tokenizer_config=tokenizer_config,
-                                                     lang_code=lang_code)
+                options["vocab"] = self.download_vocab()
+                options["tokenizer_config"] = self.download_tokenizer_config()
             elif self.tokens_url:
                 self.download_tokens_txt()
-                self._config = VoiceConfig.from_dict(config,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine,
-                                                     tokens_txt=str(self.voice_path / "tokens.txt"),
-                                                     lang_code=lang_code)
-            else:
-                self._config = VoiceConfig.from_dict(config,
-                                                     alphabet=alphabet,
-                                                     phoneme_type=phoneme_type,
-                                                     engine=engine)
+                options["tokens_txt"] = str(self.hub_path(self.tokens_url))
+            self._config = VoiceConfig.from_dict(config, **options)
+            if self.config_url:
+                for name in ("phoneme_type", "alphabet", "phonemizer_model"):
+                    listed, loaded = getattr(self, name), getattr(self._config, name)
+                    if listed and listed != loaded:
+                        listed, loaded = (v.value if isinstance(v, Enum) else v for v in (listed, loaded))
+                        LOG.warning(f"{self.voice_id}: the voice index lists {name} {listed}, "
+                                    f"config.json gives {loaded}; config.json wins")
 
-            # populate any missing properties
-            self.lang = self.lang or normalize_lang(self._config.lang_code)
+            # populate any missing properties. The catalogue lang takes the
+            # default region and the phonemizer lang_code does not, so a voice
+            # whose lang comes from its config also records its phonemizer
+            # language: a saved voice then reloads with the phonemes it had.
+            if not self.lang:
+                self.lang = normalize_lang(self._config.lang_code)
+                self.phonemizer_lang = (self.phonemizer_lang or self._config.phonemizer_lang
+                                        or self._config.lang_code)
             self.alphabet = self.alphabet or self._config.alphabet
             self.phoneme_type = self.phoneme_type or self._config.phoneme_type
             self.engine = self.engine or self._config.engine
@@ -97,474 +907,580 @@ class TTSModelInfo:
         return self._config
 
     def __post_init__(self):
-        """
-        Initialize internal state for TTSModelInfo and normalize persisted values.
-        
-        Sets up the private config storage, ensures the voice cache directory exists, and converts string representations of engine, alphabet, and phoneme_type into their corresponding Enum values so the instance fields are normalized.
-        """
         self._config: Optional[VoiceConfig] = None
-        os.makedirs(self.voice_path, exist_ok=True)
 
-        # cast strings to enum for consistency
-        if not isinstance(self.engine, Engine) and isinstance(self.engine, str):
+        # index entries hold the enum values as plain strings
+        if isinstance(self.engine, str):
             self.engine = Engine(self.engine)
-        if not isinstance(self.alphabet, Alphabet) and isinstance(self.alphabet, str):
+        if isinstance(self.alphabet, str):
             self.alphabet = Alphabet(self.alphabet)
-        if not isinstance(self.phoneme_type, PhonemeType) and isinstance(self.phoneme_type, str):
+        if isinstance(self.phoneme_type, str):
             self.phoneme_type = PhonemeType(self.phoneme_type)
+
+        # fill the "{engine}"/"{phoneme_type}" placeholders only from fields already known,
+        # so a label never starts a config download
+        if self.display_name and "{" in self.display_name:
+            try:
+                self.display_name = self.display_name.format(
+                    engine=self.engine.value if self.engine else "",
+                    phoneme_type=self.phoneme_type.value if self.phoneme_type else "",
+                )
+            except (AttributeError, KeyError):
+                LOG.warning(f"Could not format display_name for {self.voice_id}.")
+
+    def with_precision(self, precision: Optional[str] = None,
+                       providers: Optional[Sequence[ProviderSpec]] = None) -> "TTSModelInfo":
+        """This entry as it loads under ``precision``.
+
+        ``precision`` is ``int8``, ``full`` or ``auto``; unset, it comes from
+        ``PHOONNX_PRECISION``, else ``auto``. ``providers`` matter only to
+        ``auto``. When the int8 variant is chosen, the result is a new entry
+        with the variant's URLs over this entry's, ``aux_model_urls`` merged
+        key by key. Otherwise the result is this entry.
+
+        Raises:
+            ValueError: ``precision`` is not a known value.
+            PrecisionUnavailable: the entry has no files for ``precision``.
+        """
+        chosen = choose_precision(self, resolve_precision(precision), providers)
+        if chosen == "full" or self.precision == "int8":
+            return self
+        urls = {k: v for k, v in self.variants["int8"].items() if k in VARIANT_FIELDS}
+        if "aux_model_urls" in urls:
+            urls["aux_model_urls"] = {**(self.aux_model_urls or {}), **urls["aux_model_urls"]}
+        return replace(self, **urls, precision="int8", variants=None)
+
+    def hub_path(self, url: Optional[str]) -> Optional[Path]:
+        """Give the local path of ``url``, downloading it if needed.
+
+        The path is the one the file already lives at — the hub's, or the
+        directory a self-hosted voice was streamed into. Nothing is copied out
+        of either, because a graph only loads from the directory that also
+        holds the sidecar it names.
+
+        ``None`` only when there is no URL to fetch.
+        """
+        if not url:
+            return None
+        return _resolve(url)
 
     @property
     def voice_path(self) -> Path:
-        return Path(os.path.expanduser("~")) / ".cache" / "phoonnx" / "voices" / self.voice_id
+        """The directory of this voice's graph: the hub snapshot, or the direct-download folder."""
+        return self.download_model().parent
 
     def download_config(self) -> Dict[str, Any]:
-        """
-        Ensure the model configuration file exists locally and return its parsed contents.
-        
-        If the configuration file is not present in the voice cache directory, download it from the instance's configured URL and save it as model.json; otherwise load the existing file.
-        
-        Returns:
-            dict: Parsed JSON configuration for the TTS model.
-        """
-        config_path = self.voice_path / "model.json"
-        if not config_path.is_file():
-            r = requests.get(self.config_url, timeout=30)
-            r.raise_for_status()
-            cfg = r.json()  # validate received json
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False, indent=4)
-            return cfg
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        """Give the voice's model configuration, from the hub cache."""
+        path = self.hub_path(self.config_url)
+        return _read_json(path) if path else {}
 
     def download_tokenizer_config(self) -> Dict[str, Any]:
-        """
-        Download and cache the tokenizer configuration for this voice, returning it as a parsed dictionary.
-        
-        If a local cached file exists, it is loaded and returned; otherwise the configuration is fetched from the configured URL, saved to the voice cache, and returned.
-        
-        Returns:
-            dict: The tokenizer configuration parsed from JSON.
-        
-        Raises:
-            requests.HTTPError: If the HTTP request for the tokenizer configuration returns an error status.
-            json.JSONDecodeError: If a retrieved or cached file contains invalid JSON.
-        """
-        config_path = self.voice_path / "tokenizer_config.json"
-        if not config_path.is_file():
-            r = requests.get(self.tokenizer_config_url, timeout=30)
-            r.raise_for_status()
-            cfg = r.json()  # validate received json
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False, indent=4)
-            return cfg
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        """Give the tokenizer configuration, from the hub cache."""
+        path = self.hub_path(self.tokenizer_config_url)
+        return _read_json(path) if path else {}
 
     def download_vocab(self) -> Dict[str, Any]:
-        """
-        Load the voice vocabulary from the local cache or download it from the configured URL.
-        
-        If a cached vocab.json exists in the voice's cache directory, it is read and returned.
-        If no cached file exists and `vocab_url` is set, the vocabulary JSON is fetched from that URL,
-        saved to the cache as vocab.json (UTF-8), and the parsed dictionary is returned.
-        
-        Returns:
-            dict: The vocabulary mapping loaded from vocab.json.
-        
-        Raises:
-            requests.RequestException: On network errors or non-success HTTP responses.
-            OSError: On file read/write errors.
-        """
-        vocab_path = self.voice_path / "vocab.json"
-        if self.vocab_url and not vocab_path.is_file():
-            r = requests.get(self.vocab_url, timeout=30)
-            r.raise_for_status()
-            cfg = r.json()
-            with open(vocab_path, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, ensure_ascii=False)
-            return cfg
-        with open(vocab_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        """Give the vocabulary, from the cache or from the index entry."""
+        if self.vocab_override:
+            return self.vocab_override
+        path = self.hub_path(self.vocab_url)
+        return _read_json(path) if path else {}
 
     def download_tokens_txt(self) -> str:
+        """Give the token list, from the hub cache."""
+        path = self.hub_path(self.tokens_url)
+        return path.read_text(encoding="utf-8") if path else ""
+
+    def download_dictionary(self) -> Optional[Path]:
+        """Give the path of the vosk pronunciation dictionary, if any.
+
+        The dictionary is optional: when the fetch fails, the voice loads with
+        rule-based g2p for every word.
         """
-        Ensure a local tokens.txt exists for this voice and return its contents.
-        
-        If `tokens_url` is set and the file does not exist in the voice cache directory, download the tokens file, save it to the cache using UTF-8 encoding, and return its text. If the file already exists, read and return its contents.
-        
-        Returns:
-            str: Contents of the tokens file.
-        
+        if not self.dictionary_url:
+            return None
+        try:
+            return self.hub_path(self.dictionary_url)
+        except Exception as exc:
+            LOG.warning(f"Could not fetch vosk pronunciation dictionary for "
+                        f"{self.voice_id} ({exc}); falling back to "
+                        f"rule-based g2p for every word")
+            return None
+
+    def _fetch_onnx(self, url: str) -> Path:
+        """Give the local path of an ONNX graph, with the external-data files it names beside it.
+
+        onnxruntime reads external data only from the graph's own directory, so each
+        file comes from the same source. A graph that names a file outside its own
+        folder raises ``ValueError``.
+
+        The external data carries the weights: a failure mistaken for absence gives a
+        graph that loads and synthesizes silence. Only a 404, and being offline with
+        nothing cached, count as absence.
+        """
+        path = _resolve(url)
+        for sidecar in _sidecar_urls(url, path):
+            try:
+                _resolve(sidecar, graph_url=url)
+            except (*_NO_SUCH_FILE, requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+            except requests.exceptions.HTTPError as e:
+                if e.response is None or e.response.status_code != 404:
+                    raise
+                LOG.debug(f"external-data sidecar unavailable for '{url}': {e}")
+        return path
+
+    @_in_voice_scope
+    def download_model(self) -> Path:
+        """Give the ONNX graph's path in the hub cache."""
+        return self._fetch_onnx(self.model_url)
+
+    def download_vocoder(self) -> Optional[Path]:
+        """Give the vocoder graph's path, for two-stage engines."""
+        if not self.vocoder_url:
+            return None
+        return self._fetch_onnx(self.vocoder_url)
+
+    def download_style(self) -> Optional[Path]:
+        """Give the style embedding's path, if this voice has one."""
+        return self.hub_path(self.style_url)
+
+    def download_speaker_encoder(self) -> Optional[Path]:
+        """Give the speaker encoder's path, if this voice has one."""
+        if not self.speaker_encoder_url:
+            return None
+        return self._fetch_onnx(self.speaker_encoder_url)
+
+    def download_aux_models(self) -> Dict[str, Path]:
+        """Give the auxiliary graphs' paths, keyed as the engine expects."""
+        out: Dict[str, Path] = {}
+        for key, url in (self.aux_model_urls or {}).items():
+            if not url:
+                continue
+            out[key] = (self._fetch_onnx(url) if str(url).endswith(".onnx")
+                        else _resolve(url))
+        return out
+
+    def download_bpe_tokenizer(self) -> Optional[Path]:
+        """Give the BPE tokenizer's path in the hub cache."""
+        return self.hub_path(self.tokenizer_config_url)
+
+    def engine_params(self) -> Dict[str, Any]:
+        """The engine_options of this voice, plus the local paths of its auxiliary files."""
+        params: Dict[str, Any] = dict(self.engine_options or {})
+        for key, aux_path in self.download_aux_models().items():
+            params[key] = str(aux_path)
+        style_path = self.download_style()
+        if style_path:
+            params["style_path"] = str(style_path)
+        enc_path = self.download_speaker_encoder()
+        if enc_path:
+            params["speaker_encoder_path"] = str(enc_path)
+            if self.speaker_encoder_type:
+                params["speaker_encoder_type"] = self.speaker_encoder_type
+        # a parametric vocoder (Griffin-Lim) has a type and a config but no graph
+        vocoder_path = self.download_vocoder()
+        if vocoder_path:
+            params["vocoder_path"] = str(vocoder_path)
+        if self.vocoder_type:
+            params["vocoder_type"] = self.vocoder_type
+        if (vocoder_path or self.vocoder_type) and self.vocoder_config_url:
+            params["vocoder_config"] = _read_json(_resolve(self.vocoder_config_url))
+
+        # Chatterbox's three auxiliary graphs (the language_model is the primary model).
+        for url, key in ((self.speech_encoder_url, "speech_encoder_path"),
+                         (self.embed_tokens_url, "embed_tokens_path"),
+                         (self.conditional_decoder_url, "conditional_decoder_path")):
+            if url:
+                params[key] = str(self._fetch_onnx(url))
+        return params
+
+    @_in_voice_scope
+    def download_all(self, precision: Optional[str] = None,
+                     providers: Optional[Sequence[ProviderSpec]] = None) -> Path:
+        """Download every file this voice needs to load offline, and give the graph's path.
+
+        The one definition of "fully downloaded", for the CLI and
+        :meth:`TTSModelManager.download_voice_by_id`. ``precision`` and
+        ``providers`` pick the files as :meth:`load` does.
+        """
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.download_all(precision="int8")
+        model_path = self.download_model()
+
+        config = self.download_config()
+        if self.engine == Engine.CHATTERBOX or config.get("engine") == "chatterbox":
+            self.download_bpe_tokenizer()
+        elif self.vocab_override:
+            pass  # vocab ships inside the index entry
+        elif self.vocab_url:
+            self.download_vocab()
+            self.download_tokenizer_config()
+        elif self.tokens_url:
+            self.download_tokens_txt()
+
+        self.download_dictionary()
+        self.engine_params()  # vocoder, style, speaker encoder, aux graphs
+        return model_path
+
+    def artifact_urls(self) -> List[str]:
+        """Every graph this voice loads, each named once, in a stable order.
+
+        Many voices name the same files (the omnivoice voices share one backbone), and two
+        voices with the same list load the same weights.
+        """
+        urls = [self.model_url, self.vocoder_url, self.style_url,
+                self.speaker_encoder_url, self.speech_encoder_url,
+                self.embed_tokens_url, self.conditional_decoder_url,
+                self.dictionary_url]
+        urls += [u for u in (self.aux_model_urls or {}).values() if u]
+        return list(dict.fromkeys(u for u in urls if u))
+
+    def artifact_key(self) -> str:
+        """Identity of the weights this voice loads, not of the voice.
+
+        Voices that share a key share their memory, so a memory cache charges per key.
+        """
+        return "|".join(self.artifact_urls())
+
+    @_in_voice_scope
+    def disk_size(self) -> int:
+        """Bytes on disk of the cached files of :meth:`artifact_urls` and their external data.
+
+        A proxy for the memory of the loaded voice: the weights dominate both. It leaves out
+        onnxruntime allocations, weights dequantized at load, memory shared with other
+        voices, and files not yet downloaded, which count as zero.
+        """
+        return _file_bytes(*self.artifact_urls())
+
+    @_in_voice_scope
+    def load(self, providers: Optional[Sequence[ProviderSpec]] = None,
+             precision: Optional[str] = None, threads: Optional[int] = None) -> TTSVoice:
+        """Download this voice and load it, with the text path of its config.json.
+
+        Parameters:
+            providers (Sequence, optional): Ordered ONNX Runtime execution providers,
+                e.g. ``["ROCMExecutionProvider", "CPUExecutionProvider"]``. When omitted the
+                providers are resolved from the environment / auto-detection.
+            precision (str, optional): ``int8``, ``full`` or ``auto``. When omitted it comes
+                from ``PHOONNX_PRECISION``, else ``auto``. See :meth:`with_precision`.
+            threads (int, optional): Threads per graph operator in every session of the voice.
+                When omitted it comes from ``PHOONNX_ORT_THREADS``, else ONNX Runtime's default.
+
         Raises:
-            requests.exceptions.RequestException: If the HTTP request to `tokens_url` fails or the response status is not successful.
+            PrecisionUnavailable: the voice has no files for ``precision``.
         """
-        tokens_path = self.voice_path / "tokens.txt"
-        if self.tokens_url and not tokens_path.is_file():
-            r = requests.get(self.tokens_url, timeout=30)
-            r.raise_for_status()
-            tokens = r.text
-            with open(tokens_path, "w", encoding="utf-8") as f:
-                f.write(tokens)
-            return tokens
-        with open(tokens_path, "r", encoding="utf-8") as f:
-            return f.read()
+        info = self.with_precision(precision, providers)
+        if info is not self:
+            return info.load(providers=providers, precision="int8", threads=threads)
+        # self.config needs only the small config.json, so the language check
+        # runs before the model download.
+        check_lang_supported(self.voice_id, self.config.phonemizer_lang or self.config.lang_code,
+                             self.config.phoneme_type)
 
-    def download_model(self):
-        """
-        Download the ONNX model file for this voice into the voice cache directory if it does not already exist.
-        
-        Saves the remote file as voice_path / "model.onnx" in binary mode.
-        
-        Raises:
-            requests.HTTPError: if the HTTP response indicates an error status.
-            requests.RequestException: on network-related errors during download.
-            OSError: on filesystem errors while writing the file.
-        """
-        model_path = self.voice_path / "model.onnx"
-        if not model_path.is_file():
-            with requests.get(self.model_url, timeout=120, stream=True) as r:
-                r.raise_for_status()
-                with open(model_path, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-
-    def load(self) -> TTSVoice:
-        """
-        Load and return a TTSVoice for this model, ensuring the ONNX model is downloaded and the voice configuration is applied.
-        
-        Loads a TTSVoice from the cached model and config files (and tokens file if available). If this TTSModelInfo specifies a different phoneme type or alphabet than the loaded voice, updates the loaded voice's phoneme_type and alphabet and rebuilds its phonemizer accordingly.
-        
-        Returns:
-            TTSVoice: The configured TTSVoice instance ready for synthesis.
-        """
-        model_path = self.voice_path / "model.onnx"
-        config_path = self.voice_path / "model.json"
-        vocab_path = self.voice_path / "vocab.json"
-        tokenizer_config_path = self.voice_path / "tokenizer_config.json"
-        tokens_path = self.voice_path / "tokens.txt"
-        self.download_model()
-
-        voice = TTSVoice.load(model_path=model_path,
-                              config_path=config_path,
-                              vocab_path=vocab_path,
-                              tokenizer_config_path=tokenizer_config_path,
-                              lang_code=self.config.lang_code,
-                              phoneme_type_str=self.config.phoneme_type,
-                              alphabet_str=self.config.alphabet,
-                              phonemes_txt=str(tokens_path) if self.tokens_url else None)
-        # override phoneme_type, if config.json is wrong
-        if self.phoneme_type != voice.config.phoneme_type or self.alphabet != voice.config.alphabet:
-            voice.phoneme_type = self.phoneme_type
-            voice.config.alphabet = self.alphabet
-            voice.phonemizer = get_phonemizer(self.phoneme_type,
-                                              alphabet=self.alphabet,
-                                              model=voice.config.phonemizer_model)
+        model_path = self.download_model()
+        config_dict = self.download_config()
+        config_dir = str(self.hub_path(self.config_url).parent) if config_dict else ""
+        entry_params = self.engine_params()
+        model_path, config_params, streams = streaming_graphs(model_path, config_dict, config_dir, entry_params)
+        resolved_providers = resolve_providers(providers)
+        resolved_threads = resolve_threads(threads)
+        engine_params = {**(self.config.engine_params or {}), **config_params, **entry_params,
+                         "providers": resolved_providers}
+        if resolved_threads is not None:
+            engine_params["threads"] = resolved_threads
+        # each voice gets its own config, so one load never changes the settings of another
+        config = copy.copy(self.config)
+        config.engine_params = engine_params
+        # Through make_session, so voices that name the same graph share one session.
+        session = make_session(model_path, providers=resolved_providers, threads=resolved_threads)
+        adapter = get_adapter("vits_streaming") if streams else None
+        voice = TTSVoice(session=session, config=config, adapter=adapter, model_path=str(model_path))
+        if "num_symbols" in config_dict:
+            check_num_symbols(config, voice.adapter, self.config_url)
         return voice
 
 
+_INDEX_FIELDS = frozenset(f.name for f in fields(TTSModelInfo))
+#: Fields a precision variant may replace: the files of the voice.
+VARIANT_FIELDS = frozenset(name for name in _INDEX_FIELDS
+                           if name.endswith("_url") or name == "aux_model_urls")
+
+
+def _known_fields(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """An index or cache record without the keys this release does not know.
+
+    Each unknown key is logged once as a warning, so a typo in a hand-written
+    entry is seen, and a field that a newer index adds cannot stop the voice
+    from loading.
+    """
+    for key in sorted(entry.keys() - _INDEX_FIELDS):
+        if key not in _LOGGED_UNKNOWN_KEYS:
+            _LOGGED_UNKNOWN_KEYS.add(key)
+            LOG.warning(f"ignoring key {key!r} of voice {entry.get('voice_id')!r}: "
+                        f"this phoonnx release does not know it")
+    return {k: v for k, v in entry.items() if k in _INDEX_FIELDS}
+
+
+class _VoiceRegistry(dict):
+    """The voices by id; indexing an unknown id raises :class:`UnknownVoice`."""
+
+    def __missing__(self, voice_id):
+        raise UnknownVoice(voice_id)
+
+
+def _lookup_distance(voice_lang: str, lang: str) -> int:
+    """How well a voice in ``voice_lang`` serves a request for ``lang``; above 10 it does not.
+
+    A voice in a regional form of the language is under 10. A voice in an
+    Arabic dialect serves an Arabic request in its own region: an Egyptian
+    Arabic voice (``arz-EG``) serves ``ar-EG`` at 0, as an ``ar-EG`` voice does,
+    but not ``ar-MA``, and not ``ar``, which asks for Standard Arabic. A
+    dialect voice with no region (``arz``) comes after the other Arabic
+    voices, at 10. text2spoken reads colloquial numbers only for the
+    dialect tag. linguatag measures the pair from the dialect
+    side only, at 10 for ``ar-EG`` (the other way 80), 14 for ``ar-MA`` and
+    5 for ``ar``, so the lookup asks it that way round.
+    """
+    distance = match_lang(voice_lang, lang)[-1]
+    if distance < 10:
+        return distance
+    if _is_arabic(lang) and lang_distance(voice_lang, lang) == 10:
+        # A one-letter subtag (x, u, t) starts private use or an extension
+        subtags = itertools.takewhile(lambda t: len(t) > 1, voice_lang.replace("_", "-").split("-")[1:])
+        has_region = any(len(t) == 2 or len(t) == 3 and t.isdigit() for t in subtags)
+        return 0 if has_region else 10
+    return 10000
+
+
+_is_arabic = functools.lru_cache(maxsize=4096)(is_arabic)
+
+
 class TTSModelManager:
+    # Explicit merge order for the bundled indexes: later files win when two
+    # sources publish the same voice_id. Any index file not listed here is
+    # still picked up (appended, alphabetically) so a newly added index can
+    # never silently go missing from either the catalog or the listing.
+    _VOICE_INDEX_ORDER = (
+        "OVOS.json", "MMS.json", "proxectonos.json", "piper.json",
+        "phonikud.json", "neurlang.json", "mimic3.json",
+        "transformers_community.json", "piper_community.json",
+        "optispeech.json", "glowtts.json", "mixertts.json", "fastpitch.json",
+        "coqui_community.json", "vits2.json", "styletts2.json", "f5tts.json",
+        "coqui_vits.json", "BSC.json", "shami.json", "chatterbox.json",
+        "supertonic.json", "neutts.json", "pockettts.json", "sparktts.json",
+        "qwen3tts.json",
+        "outetts.json", "arktts.json", "omnivoice.json", "indic_parler.json",
+        "parlertts.json", "llasa.json", "orpheus.json", "mosstts.json", "vosk.json",
+        "ghananlp.json", "rapido.json",
+    )
+
+    @classmethod
+    def voice_index_path(cls) -> Path:
+        """Directory holding the bundled voice-index JSON files."""
+        return Path(os.path.dirname(__file__)) / "voice_index"
+
+    @classmethod
+    def voice_index_files(cls) -> List[Path]:
+        """Every bundled voice-index file, in merge order.
+
+        The single source of truth for both ``merge_default_voices`` and
+        ``get_available_voice_ids_by_source`` - they cannot drift apart.
+        """
+        base_path = cls.voice_index_path()
+        known = [base_path / f for f in cls._VOICE_INDEX_ORDER
+                 if (base_path / f).is_file()]
+        extra = sorted(p for p in base_path.glob("*.json") if p not in known)
+        return known + extra
+
     def __init__(self, cache_path: Optional[str] = None):
-        """
-        Initialize the TTSModelManager and prepare persistent cache storage.
-        
-        Creates an empty in-memory registry for voices and sets up JSON-backed cache storage using the provided path or the XDG cache location; ensures the cache file exists.
-        
-        Parameters:
-            cache_path (Optional[str]): Filesystem path for the cache file. If omitted, uses the user's XDG cache directory under "phoonnx/voices".
-        """
+        """``cache_path`` is the voice cache JSON file; unset, the XDG cache ``phoonnx/voices``."""
+        # Replaced, never edited in place: get_lang_voices keys its answers on it.
         self.voices: Dict[str, TTSModelInfo] = {}
+        # The registry is rebuilt wholesale by ``load``/``merge_default_voices``
+        # while other threads are looking voices up in it. Rebuilding in place
+        # made a known voice look unknown for as long as the repopulation took
+        # — thousands of entries — and callers treat "unknown" as a hard error.
+        # Every rebuild therefore happens in a local dict and is published by a
+        # single assignment, under this lock so two rebuilds cannot interleave.
+        self._registry_lock = threading.RLock()
+        # bundled entries an alias read, so a lookup per sentence reads the index once
+        self._alias_fallbacks: Dict[str, Optional[TTSModelInfo]] = {}
+        # get_lang_voices answers as (registry, {lang: voices}), replaced whole
+        self._lang_voices_memo: Tuple[Optional[dict], dict] = (None, {})
         if cache_path:
             self.cache = JsonStorage(cache_path)
         else:
             self.cache = JsonStorageXDG("voices", subfolder="phoonnx")
-        self.cache.store() # ensure file exists
+        # Create the file, never write over one that is already there. A
+        # cache that cannot be parsed loads as an empty registry, and storing
+        # that registry back replaces the index with "{}": the catalog is lost
+        # and so is the evidence of what broke it.
+        if not os.path.isfile(self.cache.path):
+            self.cache.store()
+        elif not self.cache and not _parses(self.cache.path):
+            LOG.error(f"voice index at {self.cache.path} could not be read and "
+                      f"is being ignored; the catalog will look empty until it "
+                      f"is rebuilt with 'phoonnx-voices update-cache'")
+
+    @property
+    def voices(self) -> Dict[str, TTSModelInfo]:
+        return self._voices
+
+    @voices.setter
+    def voices(self, voices: Dict[str, TTSModelInfo]) -> None:
+        self._voices = voices if isinstance(voices, _VoiceRegistry) else _VoiceRegistry(voices)
 
     @property
     def all_voices(self) -> List[TTSModelInfo]:
-        """
-        List all registered TTSModelInfo instances.
-        
-        Returns:
-            List[TTSModelInfo]: A list containing the current TTSModelInfo objects stored in the manager.
-        """
         return list(self.voices.values())
 
     @property
     def supported_langs(self) -> List[str]:
-        return sorted(set(l.lang for l in self.all_voices))
+        return sorted(set(voice.lang for voice in self.all_voices))
 
     def clear(self):
-        self.cache.clear()
-        self.voices = {}
+        with self._registry_lock:
+            self.cache.clear()
+            self.voices = {}
+
+    def get_voice(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The catalog entry for ``voice_id``, or ``None`` if it is unknown.
+
+        The lookup readers should use: it sees the registry either as it was
+        before a concurrent rebuild or as it is after, never mid-rebuild.
+
+        An old id that now names one precision of another voice gives that
+        voice at that precision, with a deprecation warning.
+        """
+        with self._registry_lock:
+            if voice_id in _PRECISION_ALIASES:
+                return _alias_info(voice_id, self._alias_target)
+            return self.voices.get(voice_id)
 
     def load(self):
-        """
-        Reload the on-disk voice cache and rebuild the in-memory voice registry.
-        
-        Clears the current in-memory voices, calls the cache reload, and attempts to instantiate
-        TTSModelInfo for each cached entry. Entries that fail to construct are skipped and an
-        error is logged; successful entries are stored in self.voices keyed by voice_id.
-        """
-        self.cache.reload()
-        self.voices = {}
-        for voice_id, voice_dict in self.cache.items():
-            try:
-                self.voices[voice_id] =  TTSModelInfo(**voice_dict)
-            except Exception as e:
-                LOG.error(f"Failed to load '{voice_id}': ({e})")
-                continue
+        """Reload the cache file and rebuild the registry; entries that do not parse are logged and skipped."""
+        with self._registry_lock:
+            self.cache.reload()
+            self.voices = self._registry_from_cache()
 
     def save(self):
-        """
-        Persist in-memory voice metadata to the configured cache storage.
-        
-        Writes each managed voice's public metadata to the cache (voice_id, model_url, phoneme_type, lang,
-        tokens_url, tokenizer_config_url, vocab_url, phoneme_map_url, alphabet, engine, config_url)
-        and then persists the cache to disk.
-        """
+        """Write every voice of the registry to the cache file."""
         self.cache.clear()
         for voice_id, voice_info in self.voices.items():
-            self.cache[voice_id] = {"voice_id": voice_info.voice_id,
-                                    "model_url": voice_info.model_url,
-                                    "phoneme_type": voice_info.phoneme_type,
-                                    "lang": voice_info.lang,
-                                    "tokens_url": voice_info.tokens_url,
-                                    "tokenizer_config_url": voice_info.tokenizer_config_url,
-                                    "vocab_url": voice_info.vocab_url,
-                                    "phoneme_map_url": voice_info.phoneme_map_url,
-                                    "alphabet": voice_info.alphabet,
-                                    "engine": voice_info.engine,
-                                    "config_url": voice_info.config_url}
+            self.cache[voice_id] = voice_info.to_dict()
         self.cache.store()
 
     def add_voice(self, voice_info: TTSModelInfo):
-        """
-        Add or update a TTS voice in the manager's in-memory registry and persist its public metadata to the cache.
-        
-        This stores the given TTSModelInfo under its voice_id in memory and writes a curated subset of its fields (voice_id, model_url, tokens_url, phoneme_type, phoneme_map_url, alphabet, lang, config_url) into the persistent cache, overwriting any existing entry for the same voice_id.
-        
-        Parameters:
-            voice_info (TTSModelInfo): The voice metadata to add or update.
-        """
-        self.voices[voice_info.voice_id] = voice_info
-        self.cache[voice_info.voice_id] = {"voice_id": voice_info.voice_id,
-                                           "model_url": voice_info.model_url,
-                                           "tokens_url": voice_info.tokens_url,
-                                           "tokenizer_config_url": voice_info.tokenizer_config_url,
-                                           "vocab_url": voice_info.vocab_url,
-                                           "phoneme_type": voice_info.phoneme_type,
-                                           "phoneme_map_url": voice_info.phoneme_map_url,
-                                           "alphabet": voice_info.alphabet,
-                                           "engine": voice_info.engine,
-                                           "lang": voice_info.lang,
-                                           "config_url": voice_info.config_url}
+        """Add or replace a voice in the registry and in the cache; :meth:`save` writes the file."""
+        with self._registry_lock:
+            self.voices = {**self.voices, voice_info.voice_id: voice_info}
+            self.cache[voice_info.voice_id] = voice_info.to_dict()
 
     def get_lang_voices(self, lang: str) -> List[TTSModelInfo]:
-        voices = sorted(
-            [
-                (voice_info, match_lang(voice_info.lang, lang)[-1])
-                for voice_info in self.voices.values()
-            ], key=lambda k: k[1])
-        return [v[0] for v in voices if v[1] < 10]
+        """The voices that speak ``lang``, nearest first, kept until ``voices`` is replaced."""
+        registry, answers = self._lang_voices_memo
+        if registry is not self.voices:
+            registry, answers = self.voices, {}
+            self._lang_voices_memo = (registry, answers)
+        voices = answers.get(lang)
+        if voices is None:
+            # checked before the scan: a voice gets its lang when its config loads
+            complete = all(voice_info.lang for voice_info in registry.values())
+            ranked = sorted(((voice_info, _lookup_distance(voice_info.lang, lang))
+                             for voice_info in registry.values()), key=lambda k: k[1])
+            voices = [v[0] for v in ranked if v[1] <= 10]
+            if complete:
+                answers[lang] = voices
+        return list(voices)
 
     def merge_default_voices(self, store=False):
+        """Merge the bundled voice indexes into the cache and rebuild the registry.
+
+        The bundled voices come first, in index order, and replace any cached copy; the
+        voices only the cache holds follow. `get_lang_voices` breaks ties by this order, so
+        a bundled voice wins a tie with a cached voice. ``store`` writes the cache file.
         """
-        Merge a set of predefined voice indexes into the manager's cache and rebuild the in-memory voice registry.
-        
-        Loads multiple JSON voice index files bundled with the package into the manager's cache, constructs TTSModelInfo objects for each entry, and logs (but skips) any entries that fail to load. If store is True, the updated cache is persisted to disk.
-        
-        Parameters:
-            store (bool): If True, persist the updated cache to disk after merging.
+        bundled = {}
+        for f in self.voice_index_files():
+            bundled.update(JsonStorage(str(f)))
+        with self._registry_lock:
+            # bundled voices first, in index order: get_lang_voices breaks ties by this order
+            others = {k: v for k, v in self.cache.items() if k not in bundled}
+            self.cache.clear()
+            self.cache.update(bundled)
+            self.cache.update(others)
+            self.voices = self._registry_from_cache()
+            if store:
+                self.cache.store()
+
+    def _registry_from_cache(self) -> Dict[str, TTSModelInfo]:
+        """Build the registry from the cache, skipping entries that don't parse.
+
+        Returned rather than assigned, so the caller publishes it in one
+        assignment instead of leaving a half-filled registry visible.
         """
-        base_path = Path(os.path.dirname(__file__)) / "voice_index"
-        self.cache.update(JsonStorage(str(base_path / "OVOS.json")))
-        self.cache.update(JsonStorage(str(base_path / "MMS.json")))
-        self.cache.update(JsonStorage(str(base_path / "proxectonos.json")))
-        self.cache.update(JsonStorage(str(base_path / "piper.json")))
-        self.cache.update(JsonStorage(str(base_path / "phonikud.json")))
-        self.cache.update(JsonStorage(str(base_path / "neurlang.json")))
-        self.cache.update(JsonStorage(str(base_path / "mimic3.json")))
-        self.cache.update(JsonStorage(str(base_path / "transformers_community.json")))
-        self.cache.update(JsonStorage(str(base_path / "piper_community.json")))
-        self.voices = {}
+        voices: Dict[str, TTSModelInfo] = {}
         for voice_id, voice_dict in self.cache.items():
+            if voice_id in _PRECISION_ALIASES:
+                # Left in a cache saved before the id became an alias.
+                continue
             try:
-                self.voices[voice_id] =  TTSModelInfo(**voice_dict)
+                voices[voice_id] = TTSModelInfo(**_known_fields(voice_dict))
             except Exception as e:
                 LOG.error(f"Failed to load '{voice_id}': ({e})")
-                continue
+        return voices
 
-        if store:
-            self.cache.store()
+    def get_available_voice_ids_by_source(self) -> Dict[str, List[str]]:
+        """The bundled voice ids by source index, sorted. Reads no network."""
+        result: Dict[str, List[str]] = {}
+        for path in self.voice_index_files():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            result[path.stem.lower()] = sorted(data.keys())
+        return result
 
+    def _bundled_voice(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The entry for ``voice_id`` read from the bundled indexes, or None."""
+        for path in self.voice_index_files():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if voice_id in data:
+                return TTSModelInfo(**_known_fields(data[voice_id]))
+        return None
 
+    def _alias_target(self, voice_id: str) -> Optional[TTSModelInfo]:
+        """The registry entry an alias points at, for :func:`_alias_info`.
 
-if __name__ == "__main__":
-    manager = TTSModelManager()
-    manager.cache.clear()
-    manager.merge_default_voices(store=True)  # load and cache known voice models
-
-    print(f"Total voices: {len(manager.all_voices)}")
-    print(f"Total langs: {len(manager.supported_langs)}")
-
-    # Total voices: 1462
-    # Total langs: 1205
-
-    for voice in manager.get_lang_voices("gl"):
-        print(voice)
-        # TTSModelInfo(voice_id='proxectonos/brais', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-graphemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='graphemes', alphabet='unicode', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ï': 46, 'Ó': 47, 'Ú': 48, 'Ü': 49, 'a': 50, 'b': 51, 'c': 52, 'd': 53, 'e': 54, 'f': 55, 'g': 56, 'h': 57, 'i': 58, 'j': 59, 'k': 60, 'l': 61, 'm': 62, 'n': 63, 'o': 64, 'p': 65, 'q': 66, 'r': 67, 's': 68, 't': 69, 'u': 70, 'v': 71, 'w': 72, 'x': 73, 'y': 74, 'z': 75, 'ñ': 76, 'á': 77, 'é': 78, 'í': 79, 'ï': 80, 'ó': 81, 'ú': 82, 'ü': 83, '<BLNK>': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.GRAPHEMES: 'graphemes'>, alphabet=<Alphabet.UNICODE: 'unicode'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/celtia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-graphemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='graphemes', alphabet='unicode', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'_': 0, '!': 1, '"': 2, '(': 3, ')': 4, ',': 5, '-': 6, '.': 7, ':': 8, ';': 9, '?': 10, '¡': 11, '¿': 12, ' ': 13, 'A': 14, 'B': 15, 'C': 16, 'D': 17, 'E': 18, 'F': 19, 'G': 20, 'H': 21, 'I': 22, 'J': 23, 'K': 24, 'L': 25, 'M': 26, 'N': 27, 'O': 28, 'P': 29, 'Q': 30, 'R': 31, 'S': 32, 'T': 33, 'U': 34, 'V': 35, 'X': 36, 'Y': 37, 'Z': 38, 'a': 39, 'b': 40, 'c': 41, 'd': 42, 'e': 43, 'f': 44, 'g': 45, 'h': 46, 'i': 47, 'j': 48, 'k': 49, 'l': 50, 'm': 51, 'n': 52, 'o': 53, 'p': 54, 'q': 55, 'r': 56, 's': 57, 't': 58, 'u': 59, 'v': 60, 'w': 61, 'x': 62, 'y': 63, 'z': 64, 'Á': 65, 'É': 66, 'Í': 67, 'Ó': 68, 'Ú': 69, 'á': 70, 'é': 71, 'í': 72, 'ñ': 73, 'ó': 74, 'ú': 75, 'ü': 76, '<BLNK>': 77}, pad='_', eos='*', bos='^', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.GRAPHEMES: 'graphemes'>, alphabet=<Alphabet.UNICODE: 'unicode'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/brais-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-brais-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/celtia-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-celtia-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/sabela-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-sabela-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '!': 1, '¡': 2, "'": 3, '(': 4, ')': 5, ',': 6, '-': 7, '.': 8, ':': 9, ';': 10, '¿': 11, '?': 12, ' ': 13, '"': 14, '\n': 15, 'A': 16, 'B': 17, 'C': 18, 'D': 19, 'E': 20, 'F': 21, 'G': 22, 'H': 23, 'I': 24, 'J': 25, 'K': 26, 'L': 27, 'M': 28, 'N': 29, 'O': 30, 'P': 31, 'Q': 32, 'R': 33, 'S': 34, 'T': 35, 'U': 36, 'V': 37, 'W': 38, 'X': 39, 'Y': 40, 'Z': 41, 'Ç': 42, 'Á': 43, 'É': 44, 'Í': 45, 'Ó': 46, 'Ú': 47, 'Ü': 48, 'a': 49, 'b': 50, 'c': 51, 'd': 52, 'e': 53, 'f': 54, 'g': 55, 'h': 56, 'i': 57, 'j': 58, 'k': 59, 'l': 60, 'm': 61, 'n': 62, 'o': 63, 'p': 64, 'q': 65, 'r': 66, 's': 67, 't': 68, 'u': 69, 'v': 70, 'w': 71, 'x': 72, 'y': 73, 'z': 74, 'ñ': 75, 'á': 76, 'é': 77, 'í': 78, 'ó': 79, 'ú': 80, 'ü': 81, '<BLNK>': 82}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/icia-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-icia-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, '\n': 4, '"': 5, 'A': 6, 'B': 7, 'C': 8, 'D': 9, 'E': 10, 'F': 11, 'G': 12, 'H': 13, 'I': 14, 'J': 15, 'K': 16, 'L': 17, 'M': 18, 'N': 19, 'O': 20, 'P': 21, 'Q': 22, 'R': 23, 'S': 24, 'T': 25, 'U': 26, 'V': 27, 'W': 28, 'X': 29, 'Y': 30, 'Z': 31, 'a': 32, 'b': 33, 'c': 34, 'd': 35, 'e': 36, 'f': 37, 'g': 38, 'h': 39, 'i': 40, 'j': 41, 'k': 42, 'l': 43, 'm': 44, 'n': 45, 'o': 46, 'p': 47, 'q': 48, 'r': 49, 's': 50, 't': 51, 'u': 52, 'v': 53, 'w': 54, 'x': 55, 'y': 56, 'z': 57, 'Á': 58, 'Ç': 59, 'É': 60, 'Í': 61, 'Ó': 62, 'Ú': 63, 'Ü': 64, 'á': 65, 'é': 66, 'í': 67, 'ñ': 68, 'ó': 69, 'ú': 70, 'ü': 71, '!': 72, '¡': 73, "'": 74, '(': 75, ')': 76, ',': 77, '-': 78, '.': 79, ':': 80, ';': 81, '¿': 82, '?': 83, ' ': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/paulo-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-paulo-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, 'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11, 'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19, 'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27, 'Y': 28, 'Z': 29, 'a': 30, 'b': 31, 'c': 32, 'd': 33, 'e': 34, 'f': 35, 'g': 36, 'h': 37, 'i': 38, 'j': 39, 'k': 40, 'l': 41, 'm': 42, 'n': 43, 'o': 44, 'p': 45, 'q': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54, 'z': 55, 'Á': 56, 'Ç': 57, 'É': 58, 'Í': 59, 'Ó': 60, 'Ú': 61, 'Ü': 62, 'á': 63, 'é': 64, 'í': 65, 'ñ': 66, 'ó': 67, 'ú': 68, 'ü': 69, '!': 70, '¡': 71, "'": 72, '(': 73, ')': 74, ',': 75, '-': 76, '.': 77, ':': 78, ';': 79, '¿': 80, '?': 81, ' ': 82, '"': 83, '\n': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-        # TTSModelInfo(voice_id='proxectonos/iago-cotovia', lang='gl-ES', model_url='https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/model.onnx', config_url='https://huggingface.co/OpenVoiceOS/proxectonos-iago-vits-phonemes-onnx/resolve/main/config.json', vocab_url=None, tokenizer_config_url=None, tokens_url=None, phoneme_map_url=None, config=VoiceConfig(num_symbols=256, num_speakers=0, num_langs=1, sample_rate=16000, lang_code='gl-ES', phoneme_type='cotovia', alphabet='cotovia', phonemizer_model=None, speaker_id_map={}, lang_id_map={}, engine='coqui', length_scale=1.0, noise_scale=0.667, noise_w_scale=0.8, add_diacritics=False, tokenizer=TTSTokenizer(vocabulary=Vocabulary(char2idx={'<PAD>': 0, '<EOS>': 1, '<BOS>': 2, '<BLNK>': 3, 'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11, 'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19, 'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27, 'Y': 28, 'Z': 29, 'a': 30, 'b': 31, 'c': 32, 'd': 33, 'e': 34, 'f': 35, 'g': 36, 'h': 37, 'i': 38, 'j': 39, 'k': 40, 'l': 41, 'm': 42, 'n': 43, 'o': 44, 'p': 45, 'q': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54, 'z': 55, 'Á': 56, 'Ç': 57, 'É': 58, 'Í': 59, 'Ó': 60, 'Ú': 61, 'Ü': 62, 'á': 63, 'é': 64, 'í': 65, 'ñ': 66, 'ó': 67, 'ú': 68, 'ü': 69, '!': 70, '¡': 71, "'": 72, '(': 73, ')': 74, ',': 75, '-': 76, '.': 77, ':': 78, ';': 79, '¿': 80, '?': 81, ' ': 82, '"': 83, '\n': 84}, pad='<PAD>', eos='<EOS>', bos='<BOS>', blank='<BLNK>', blank_word=None), add_blank_char=True, add_blank_word=False, use_eos_bos=False, blank_at_end=True, blank_at_start=True), blank_at_start=True, blank_at_end=True, pad_token=None, blank_token=None, bos_token=None, eos_token=None, word_sep_token=' ', blank_between=<BlankBetween.TOKENS_AND_WORDS: 'tokens_and_words'>), phoneme_type=<PhonemeType.COTOVIA: 'cotovia'>, alphabet=<Alphabet.COTOVIA: 'cotovia'>, engine=<Engine.COQUI: 'coqui'>, vocab_override={})
-
-    print(manager.supported_langs)
-    # ['abi', 'abp', 'aca', 'acd', 'ace', 'acf', 'ach', 'acn', 'acr', 'acu', 'ade', 'adh', 'adj', 'adx', 'aeu',
-    # 'af-ZA', 'agd', 'agg', 'agn', 'agr', 'agu', 'agx', 'aha', 'ahk', 'aia', 'aka', 'akb', 'ake', 'akp', 'alj',
-    # 'alp', 'alt', 'alz', 'ame', 'amf', 'amh', 'ami', 'amk', 'ann', 'any', 'aoz', 'apb', 'apr', 'ar', 'ar-JO',
-    # 'ar-SA', 'ara', 'arl', 'asa', 'asg', 'asm', 'ata', 'atb', 'atg', 'ati', 'atq', 'ava', 'avn', 'avu', 'awa', 'awb',
-    # 'ayo', 'ayr', 'ayz', 'azb', 'azg', 'azj-script_cyrillic', 'azj-script_latin', 'azz', 'bak', 'bam', 'ban', 'bao',
-    # 'bav', 'bba', 'bbb', 'bbc', 'bbo', 'bcc-script_arabic', 'bcc-script_latin', 'bcl', 'bcw', 'bdg', 'bdh', 'bdq',
-    # 'bdu', 'bdv', 'beh', 'bem', 'ben', 'bep', 'bex', 'bfa', 'bfo', 'bfy', 'bfz', 'bg-BG', 'bgc', 'bgq', 'bgr', 'bgt',
-    # 'bgw', 'bha', 'bht', 'bhz', 'bib', 'bim', 'bis', 'biv', 'bjr', 'bjv', 'bjw', 'bjz', 'bkd', 'bkv', 'blh', 'blt',
-    # 'blx', 'blz', 'bmq', 'bmr', 'bmu', 'bmv', 'bn', 'bng', 'bno', 'bnp', 'boa', 'bod', 'boj', 'bom', 'bor', 'bov',
-    # 'box', 'bpr', 'bps', 'bqc', 'bqi', 'bqj', 'bqp', 'bru', 'bsc', 'bsq', 'bss', 'btd', 'bts', 'btt', 'btx', 'bud',
-    # 'bul', 'bus', 'bvc', 'bvz', 'bwq', 'bwu', 'byr', 'bzh', 'bzi', 'bzj', 'ca-ES', 'caa', 'cab',
-    # 'cak-dialect_central', 'cak-dialect_santodomingoxenacoj', 'cak-dialect_southcentral', 'cak-dialect_western',
-    # 'cak-dialect_yepocapa', 'cap', 'car', 'cas', 'cat', 'cax', 'cbc', 'cbi', 'cbr', 'cbs', 'cbt', 'cbu', 'cbv', 'cce',
-    # 'cco', 'cdj', 'ceb', 'ceg', 'cek', 'cfm', 'cgc', 'che', 'chf', 'chv', 'chz', 'cjo', 'cjp', 'cjs', 'cko', 'ckt',
-    # 'cla', 'cle', 'cly', 'cme', 'cmo-script_khmer', 'cmo-script_latin', 'cmr', 'cnh', 'cni', 'cnl', 'cnt', 'coe',
-    # 'cof', 'cok', 'con', 'cot', 'cou', 'cpa', 'cpb', 'cpu', 'crh', 'crk-script_latin', 'crk-script_syllabics', 'crn',
-    # 'crq', 'crs', 'crt', 'cs-CZ', 'csk', 'cso', 'ctd', 'ctg', 'cto', 'ctu', 'cuc', 'cui', 'cuk', 'cul', 'cwa', 'cwe',
-    # 'cwt', 'cy-GB', 'cya', 'cym', 'da-DK', 'daa', 'dah', 'dar', 'dbj', 'dbq', 'ddn', 'de-DE', 'ded', 'des', 'deu',
-    # 'dga', 'dgi', 'dgk', 'dgo', 'dgr', 'dhi', 'did', 'dig', 'dik', 'dip', 'div', 'djk', 'dnj-dialect_blowowest',
-    # 'dnj-dialect_gweetaawueast', 'dnt', 'dnw', 'dop', 'dos', 'dsh', 'dso', 'dtp', 'dts', 'dug', 'dwr', 'dyi', 'dyo',
-    # 'dyu', 'dzo', 'eip', 'eka', 'el-GR', 'ell', 'emp', 'en', 'en-GB', 'en-IE', 'en-US', 'en-cy', 'enb', 'eng', 'enx',
-    # 'es-AR', 'es-CL', 'es-CO', 'es-ES', 'es-MX', 'ese', 'ess', 'eu-ES', 'eus', 'evn', 'ewe', 'eza', 'fa', 'fa-IR',
-    # 'fal', 'fao', 'far', 'fas', 'fi-FI', 'fij', 'fin', 'flr', 'fmu', 'fon', 'fr-FR', 'fra', 'frd', 'ful',
-    # 'gag-script_cyrillic', 'gag-script_latin', 'gai', 'gam', 'gau', 'gbi', 'gbk', 'gbm', 'gbo', 'gde', 'geb', 'gej',
-    # 'gil', 'gjn', 'gkn', 'gl-ES', 'gld', 'glk', 'gmv', 'gna', 'gnd', 'gng', 'gof-script_latin', 'gog', 'gor', 'gqr',
-    # 'grc', 'gri', 'grn', 'grt', 'gso', 'gu-IN', 'gub', 'guc', 'gud', 'guh', 'guj', 'guk', 'gum', 'guo', 'guq', 'guu',
-    # 'gux', 'gvc', 'gvl', 'gwi', 'gwr', 'gym', 'gyr', 'ha-NE', 'had', 'hag', 'hak', 'hap', 'hat', 'hau', 'hay', 'he',
-    # 'heb', 'heh', 'hi-IN', 'hif', 'hig', 'hil', 'hin', 'hlb', 'hlt', 'hne', 'hnn', 'hns', 'hoc', 'hoy', 'hto', 'hu-HU',
-    # 'hub', 'hui', 'hun', 'hus-dialect_centralveracruz', 'hus-dialect_westernpotosino', 'huu', 'huv', 'hvn', 'hwc',
-    # 'hy-AM', 'hyw', 'iba', 'icr', 'id-ID', 'idd', 'ifa', 'ifb', 'ife', 'ifk', 'ifu', 'ify', 'ign', 'ikk', 'ilb', 'ilo',
-    # 'imo', 'inb', 'ind', 'iou', 'ipi', 'iqw', 'iri', 'irk', 'is-IS', 'isl', 'it-IT', 'itl', 'itv',
-    # 'ixl-dialect_sangasparchajul', 'ixl-dialect_sanjuancotzal', 'ixl-dialect_santamarianebaj', 'izr', 'izz', 'jac',
-    # 'jam', 'jav', 'jbu', 'jen', 'jic', 'jiv', 'jmc', 'jmd', 'jun', 'juy', 'jv-ID', 'jvn', 'ka-GE', 'kaa', 'kab',
-    # 'kac', 'kak', 'kan', 'kao', 'kaq', 'kay', 'kaz', 'kbo', 'kbp', 'kbq', 'kbr', 'kby', 'kca', 'kcg', 'kdc', 'kde',
-    # 'kdh', 'kdi', 'kdj', 'kdl', 'kdn', 'kdt', 'kek', 'ken', 'keo', 'ker', 'key', 'kez', 'kfb', 'kff-script_telugu',
-    # 'kfw', 'kfx', 'khg', 'khm', 'khq', 'kia', 'kij', 'kik', 'kin', 'kir', 'kjb', 'kje', 'kjg', 'kjh', 'kk-KZ', 'kki',
-    # 'kkj', 'kle', 'klu', 'klv', 'klw', 'kma', 'kmd', 'kml', 'kmr-script_arabic', 'kmr-script_cyrillic',
-    # 'kmr-script_latin', 'kmu', 'knb', 'kne', 'knf', 'knj', 'knk', 'kno', 'ko-KO', 'kog', 'kor', 'kpq', 'kps', 'kpv',
-    # 'kpy', 'kpz', 'kqe', 'kqp', 'kqr', 'kqy', 'krc', 'kri', 'krj', 'krl', 'krr', 'krs', 'kru', 'ksb', 'ksr', 'kss',
-    # 'ktb', 'ktj', 'kub', 'kue', 'kum', 'kus', 'kvn', 'kvw', 'kwd', 'kwf', 'kwi', 'kxc', 'kxf', 'kxm', 'kxv', 'kyb',
-    # 'kyc', 'kyf', 'kyg', 'kyo', 'kyq', 'kyu', 'kyz', 'kzf', 'lac', 'laj', 'lam', 'lao', 'las', 'lat', 'lav', 'law',
-    # 'lb-LU', 'lbj', 'lbw', 'lcp', 'lee', 'lef', 'lem', 'lew', 'lex', 'lgg', 'lgl', 'lhu', 'lia', 'lid', 'lif', 'lip',
-    # 'lis', 'lje', 'ljp', 'llg', 'lln', 'lme', 'lnd', 'lns', 'lob', 'lok', 'lom', 'lon', 'loq', 'lsi', 'lsm', 'luc',
-    # 'lug', 'lv-LV', 'lwo', 'lww', 'lzz', 'maa-dialect_sanantonio', 'mad', 'mag', 'mah', 'mai', 'maj', 'mak', 'mal',
-    # 'mam-dialect_central', 'mam-dialect_northern', 'mam-dialect_southern', 'mam-dialect_western', 'maq', 'mar', 'maw',
-    # 'maz', 'mbb', 'mbc', 'mbh', 'mbj', 'mbt', 'mbu', 'mbz', 'mca', 'mcb', 'mcd', 'mco', 'mcp', 'mcq', 'mcu', 'mda',
-    # 'mdv', 'mdy', 'med', 'mee', 'mej', 'men', 'meq', 'met', 'mev', 'mfe', 'mfh', 'mfi', 'mfk', 'mfq', 'mfy', 'mfz',
-    # 'mgd', 'mge', 'mgh', 'mgo', 'mhi', 'mhr', 'mhu', 'mhx', 'mhy', 'mib', 'mie', 'mif', 'mih', 'mil', 'mim', 'min',
-    # 'mio', 'mip', 'miq', 'mit', 'miy', 'miz', 'mjl', 'mjv', 'mkl', 'mkn', 'ml-IN', 'mlg', 'mmg', 'mnb', 'mnf', 'mnk',
-    # 'mnw', 'mnx', 'moa', 'mog', 'mon', 'mop', 'mor', 'mos', 'mox', 'moz', 'mpg', 'mpm', 'mpp', 'mpx', 'mqb', 'mqf',
-    # 'mqj', 'mqn', 'mrw', 'msy', 'mtd', 'mtj', 'mto', 'muh', 'mup', 'mur', 'muv', 'muy', 'mvp', 'mwq', 'mwv', 'mxb',
-    # 'mxq', 'mxt', 'mxv', 'mya', 'myb', 'myk', 'myl', 'myv', 'myx', 'myy', 'mza', 'mzi', 'mzj', 'mzk', 'mzm', 'mzw',
-    # 'nab', 'nag', 'nan', 'nas', 'naw', 'nca', 'nch', 'ncj', 'ncl', 'ncu', 'ndj', 'ndp', 'ndv', 'ndy', 'ndz', 'ne-NP',
-    # 'neb', 'new', 'nfa', 'nfr', 'nga', 'ngl', 'ngp', 'ngu', 'nhe', 'nhi', 'nhu', 'nhw', 'nhx', 'nhy', 'nia', 'nij',
-    # 'nim', 'nin', 'nko', 'nl', 'nl-BE', 'nl-NL', 'nlc', 'nld', 'nlg', 'nlk', 'nmz', 'nnb', 'nnq', 'nnw', 'no-NO',
-    # 'noa', 'nod', 'nog', 'not', 'npl', 'npy', 'nst', 'nsu', 'ntm', 'ntr', 'nuj', 'nus', 'nuz', 'nwb', 'nxq', 'nya',
-    # 'nyf', 'nyn', 'nyo', 'nyy', 'nzi', 'obo', 'ojb-script_latin', 'ojb-script_syllabics', 'oku', 'old', 'omw', 'onb',
-    # 'ood', 'orm', 'ory', 'oss', 'ote', 'otq', 'ozm', 'pab', 'pad', 'pag', 'pam', 'pan', 'pao', 'pap', 'pau', 'pbb',
-    # 'pbc', 'pbi', 'pce', 'pcm', 'peg', 'pez', 'pib', 'pil', 'pir', 'pis', 'pjt', 'pkb', 'pl-PL', 'pls', 'plw', 'pmf',
-    # 'pny', 'poh-dialect_eastern', 'poh-dialect_western', 'poi', 'pol', 'por', 'poy', 'ppk', 'pps', 'prf', 'prk', 'prt',
-    # 'pse', 'pss', 'pt-BR', 'pt-PT', 'ptu', 'pui', 'pwg', 'pww', 'pxm', 'qub', 'quc-dialect_central', 'quc-dialect_east',
-    # 'quc-dialect_north', 'quf', 'quh', 'qul', 'quw', 'quy', 'quz', 'qvc', 'qve', 'qvh', 'qvm', 'qvn', 'qvo', 'qvs',
-    # 'qvw', 'qvz', 'qwh', 'qxh', 'qxl', 'qxn', 'qxo', 'qxr', 'rah', 'rai', 'rap', 'rav', 'raw', 'rej', 'rel', 'rgu',
-    # 'rhg', 'rif-script_arabic', 'rif-script_latin', 'ril', 'rim', 'rjs', 'rkt', 'rmc-script_cyrillic',
-    # 'rmc-script_latin', 'rmo', 'rmy-script_cyrillic', 'rmy-script_latin', 'rng', 'rnl', 'ro-RO', 'rol', 'ron', 'rop',
-    # 'rro', 'ru-RU', 'rub', 'ruf', 'rug', 'run', 'rus', 'sab', 'sag', 'sah', 'saj', 'saq', 'sas', 'sba', 'sbd', 'sbl',
-    # 'sbp', 'sch', 'sck', 'sda', 'sea', 'seh', 'ses', 'sey', 'sgb', 'sgj', 'sgw', 'shi', 'shk', 'shn', 'sho', 'shp',
-    # 'sid', 'sig', 'sil', 'sja', 'sjm', 'sk-SK', 'sl-SI', 'sld', 'slu', 'sml', 'smo', 'sna', 'sne', 'snn', 'snp',
-    # 'snw', 'som', 'soy', 'spa', 'spp', 'spy', 'sqi', 'sr-RS', 'sri', 'srm', 'srn', 'srx', 'stn', 'stp', 'suc', 'suk',
-    # 'sun', 'sur', 'sus', 'suv', 'suz', 'sv-SE', 'sw', 'sw-CD', 'swe', 'swh', 'sxb', 'sxn', 'sya', 'syl', 'sza', 'tac',
-    # 'taj', 'tam', 'tao', 'tap', 'taq', 'tat', 'tav', 'tbc', 'tbg', 'tbk', 'tbl', 'tby', 'tbz', 'tca', 'tcc', 'tcs',
-    # 'tcz', 'tdj', 'tdt-TL', 'te-IN', 'ted', 'tee', 'tel', 'tem', 'teo', 'ter', 'tes', 'tew', 'tex', 'tfr', 'tgj',
-    # 'tgk', 'tgl', 'tgo', 'tgp', 'tha', 'thk', 'thl', 'tih', 'tik', 'tir', 'tkr', 'tlb', 'tlj', 'tly', 'tmc', 'tmf',
-    # 'tn-ZA', 'tna', 'tng', 'tnk', 'tnn', 'tnp', 'tnr', 'tnt', 'tob', 'toc', 'toh', 'tom', 'tos', 'tpi', 'tpm', 'tpp',
-    # 'tpt', 'tr-TR', 'trc', 'tri', 'trn', 'trs', 'tso', 'tsz', 'ttc', 'tte', 'ttq-script_tifinagh', 'tue', 'tuf',
-    # 'tuk-script_arabic', 'tuk-script_latin', 'tuo', 'tur', 'tvw', 'twb', 'twe', 'twu', 'txa', 'txq', 'txu', 'tye',
-    # 'tzh-dialect_tenejapa', 'tzj-dialect_eastern', 'tzj-dialect_western', 'tzo-dialect_chamula', 'udm', 'udu',
-    # 'uig-script_arabic', 'uig-script_cyrillic', 'uk-GB', 'uk-UA', 'ukr', 'unr', 'upv', 'ura', 'urb',
-    # 'urd-script_arabic', 'urd-script_devanagari', 'urd-script_latin', 'urk', 'urt', 'ury', 'usp',
-    # 'uzb-script_cyrillic', 'vag', 'vi-VN', 'vid', 'vie', 'vif', 'vmw', 'vmy', 'vun', 'vut', 'wal-script_ethiopic',
-    # 'wal-script_latin', 'wap', 'war', 'waw', 'way', 'wba', 'wlo', 'wlx', 'wmw', 'wob', 'wsg', 'wwa', 'xal', 'xdy',
-    # 'xed', 'xer', 'xmm', 'xnj', 'xnr', 'xog', 'xon', 'xrb', 'xsb', 'xsm', 'xsr', 'xsu', 'xta', 'xtd', 'xte', 'xtm',
-    # 'xtn', 'xua', 'xuo', 'yaa', 'yad', 'yal', 'yam', 'yao', 'yas', 'yat', 'yaz', 'yba', 'ybb', 'ycl', 'ycn', 'yea',
-    # 'yka', 'yli', 'yo', 'yor', 'yre', 'yua', 'yuz', 'yva', 'zaa', 'zab', 'zac', 'zad', 'zae', 'zai', 'zam', 'zao',
-    # 'zaq', 'zar', 'zas', 'zav', 'zaw', 'zca', 'zga', 'zh-CN', 'zh-TW', 'zim', 'ziw', 'zlm', 'zmz', 'zne', 'zos',
-    # 'zpc', 'zpg', 'zpi', 'zpl', 'zpm', 'zpo', 'zpt', 'zpu', 'zpz', 'ztq', 'zty', 'zyb', 'zyp', 'zza']
-
-
-    def generate_voices_markdown(manager: TTSModelManager, output_file: str = "../VOICES.md"):
+        A cache written before the alias existed holds the target without its
+        variants. The alias then reads the bundled entry, so it still finds its
+        files, and the registry keeps the entry it holds.
         """
-        Generate a Markdown table listing all registered voices and save it to a file.
-        
-        Creates a sorted table of all voices (by language code then voice ID) including voice ID, language code, engine, and phoneme type, writes the table to output_file, and prints a success message. If writing the file fails due to an I/O error, prints the error and emits the generated Markdown to stdout.
-        
-        Parameters:
-            manager (TTSModelManager): Manager containing the loaded voices to document.
-            output_file (str): Path to the file where the Markdown table will be written.
+        info = self.voices.get(voice_id)
+        if info is not None and not info.variants and info.precision is None:
+            if voice_id not in self._alias_fallbacks:
+                self._alias_fallbacks[voice_id] = self._bundled_voice(voice_id)
+            info = self._alias_fallbacks[voice_id] or info
+        return info
+
+    def download_voice_by_id(self, voice_id: str, precision: Optional[str] = None) -> bool:
+        """Download every file a voice needs to load offline (:meth:`TTSModelInfo.download_all`).
+
+        The voice comes from the registry, else from the bundled indexes, so no catalog
+        load is needed first. Returns False when the id is unknown.
         """
+        voice_info = self.get_voice(voice_id)
+        if not voice_info:
+            if voice_id in _PRECISION_ALIASES:
+                voice_info = _alias_info(voice_id, self._bundled_voice)
+            else:
+                voice_info = self._bundled_voice(voice_id)
 
-        # Sort voices by language code (lang) then by voice ID
-        sorted_voices = sorted(
-            manager.all_voices,
-            key=lambda v: (v.lang.lower(), v.voice_id.lower())
-        )
+        if not voice_info:
+            LOG.error(f"Cannot find voice information for ID: {voice_id}")
+            return False
 
-        markdown_output = [
-            "## Supported Voices",
-            "",
-            f"**Total Voices:** {len(sorted_voices)}",
-            f"**Total Languages:** {len(manager.supported_langs)}",
-            "",
-            "> ⚠️ some languages are duplicated, either using a different script or less specific language code (eg. Kurdish is available in latin, cyrillic and arabic scripts)",
-            "",
-            "> ⚠️ some models are duplicated, piper is known to mirror community voices and those will often show up twice (under piper and under original author)",
-            "",
-            "| Voice ID | Language Code | Engine | Phoneme Type |",
-            "| :--- | :--- | :--- | :--- |"
-        ]
-
-        for voice in sorted_voices:
-            # Get the value from the Enum object, handling None/string if post_init didn't run
-            engine = voice.engine.value if hasattr(voice.engine, 'value') else str(voice.engine)
-            phoneme_type = voice.phoneme_type.value if hasattr(voice.phoneme_type, 'value') else str(voice.phoneme_type)
-
-            # Format the row for the markdown table
-            row = (
-                f"| `{voice.voice_id}` | `{voice.lang}` | "
-                f"`{engine}` | `{phoneme_type}` |"
-            )
-            markdown_output.append(row)
-
-        # Write the output to the specified file
-        try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write("\n".join(markdown_output))
-            print(f"\n✅ Successfully generated and saved voice table to: **{output_file}**")
-        except IOError as e:
-            print(f"\n❌ Error writing to file {output_file}: {e}")
-            print("\n--- Start of Markdown Output ---")
-            print("\n".join(markdown_output))
-            print("--- End of Markdown Output ---")
-
-
-    generate_voices_markdown(manager, output_file="../VOICES.md")
+        voice_info.download_all(precision=precision)
+        return True

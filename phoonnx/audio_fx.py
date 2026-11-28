@@ -1,0 +1,392 @@
+"""Small numpy-only audio effects behind SSML: pitch, whisper, soft voice, compression, breaths.
+
+A VITS voice has no pitch or phonation controls, so these work on the finished samples
+(float32 mono in [-1, 1]). They are deliberately simple and dependency-free (numpy only):
+
+* :func:`pitch_shift` moves the pitch by semitones and keeps the duration (resample, then
+  WSOLA time-stretch back). The formants move with the pitch, so it suits the modest shifts SSML
+  asks for (a few semitones) and sounds like a different speaker beyond about +-6.
+* :func:`whisper` re-synthesizes the signal with random STFT phase, which keeps the spectral
+  envelope (the words) and drops the voicing (the pitch): an approximation of whispered speech.
+* :func:`soft` is a quieter, breathier, duller voice (``phonation="soft"``).
+* :func:`compress` evens out the loudness (``<amazon:effect name="drc">``).
+* :func:`breath` and :func:`beep` make the short sounds between sentences and over an expletive.
+* :func:`normalize_loudness` sets the loudness in LUFS (ITU-R BS.1770-4) and limits the peak.
+* :func:`resample_rate` converts between sample rates.
+"""
+from __future__ import annotations
+
+import math
+from typing import Tuple
+
+import numpy as np
+
+_EPS = 1e-9
+
+
+def _as_float(audio: np.ndarray) -> np.ndarray:
+    """Mono float32 samples; NaN and infinity (a bad model output) become silence and full scale."""
+    return np.nan_to_num(np.asarray(audio, dtype=np.float32).reshape(-1), nan=0.0, posinf=1.0, neginf=-1.0)
+
+
+def resample(audio: np.ndarray, ratio: float) -> np.ndarray:
+    """`audio` read `ratio` times faster (pitch and speed both change). Linear interpolation."""
+    audio = _as_float(audio)
+    if audio.size < 2 or abs(ratio - 1.0) < 1e-4:
+        return audio
+    new_length = max(2, int(round(audio.size / ratio)))
+    positions = np.linspace(0, audio.size - 1, new_length)
+    return np.interp(positions, np.arange(audio.size), audio).astype(np.float32)
+
+
+def time_stretch(audio: np.ndarray, factor: float, sample_rate: int) -> np.ndarray:
+    """Stretch `audio` to `factor` times its length (> 1 slower) without changing its pitch (WSOLA)."""
+    audio = _as_float(audio)
+    if audio.size < 64 or abs(factor - 1.0) < 1e-3:
+        return audio
+    frame = max(256, int(0.04 * sample_rate) // 2 * 2)
+    hop = frame // 2
+    tolerance = frame // 4
+    window = np.hanning(frame).astype(np.float32)
+    step = max(1, sample_rate // 11025)
+    out_length = int(audio.size * factor)
+    padded = np.concatenate([np.zeros(tolerance, np.float32), audio,
+                             np.zeros(frame + 2 * tolerance, np.float32)])
+    out = np.zeros(out_length + 2 * frame, np.float32)
+    norm = np.zeros_like(out)
+    position = 0.0          # where the next frame is wanted in the input
+    previous = 0            # start (in padded) of the frame placed last
+    for index in range(0, out_length // hop + 1):
+        wanted = int(round(index * hop / factor)) + tolerance
+        if index == 0:
+            start = wanted
+        else:
+            # The input that would naturally have followed the previous frame is the template;
+            # slide the new frame around `wanted` to where it lines up best with it.
+            template = padded[previous + hop: previous + hop + frame]
+            low, high = max(0, wanted - tolerance), min(padded.size - frame, wanted + tolerance)
+            if high <= low or template.size < frame:
+                start = min(wanted, padded.size - frame)
+            else:
+                # Compare every `step`-th sample: the best overlap is a matter of waveform shape,
+                # and this cuts the cost of the search (the whole effect) by the same factor.
+                candidates = np.lib.stride_tricks.sliding_window_view(
+                    padded[low: high + frame], frame)[:, ::step]
+                start = low + int(np.argmax(candidates @ template[::step]))
+        segment = padded[start: start + frame]
+        if segment.size < frame:
+            segment = np.pad(segment, (0, frame - segment.size))
+        at = index * hop
+        out[at: at + frame] += segment * window
+        norm[at: at + frame] += window
+        previous = start
+        position += hop
+        if at >= out_length:
+            break
+    norm[norm < 1e-3] = 1.0
+    return (out / norm)[:out_length].astype(np.float32)
+
+
+def pitch_shift(audio: np.ndarray, sample_rate: int, semitones: float) -> np.ndarray:
+    """`audio` raised by `semitones` (negative lowers it), at its original duration."""
+    audio = _as_float(audio)
+    if abs(semitones) < 0.05 or audio.size < 64:
+        return audio
+    ratio = 2.0 ** (float(np.clip(semitones, -12.0, 12.0)) / 12.0)
+    # Reading faster by `ratio` raises the pitch and shortens the clip; stretch it back.
+    shifted = time_stretch(resample(audio, ratio), ratio, sample_rate)
+    shifted = shifted[: audio.size]
+    # A tail cut off (or padded with silence after) on a loud sample is a click.
+    shifted = declick(shifted, sample_rate)
+    if shifted.size < audio.size:
+        shifted = np.pad(shifted, (0, audio.size - shifted.size))
+    return np.clip(shifted, -1.0, 1.0)
+
+
+def _stft(audio: np.ndarray, size: int, hop: int) -> np.ndarray:
+    window = np.hanning(size).astype(np.float32)
+    padded = np.pad(audio, (size, size))
+    count = 1 + (padded.size - size) // hop
+    frames = np.lib.stride_tricks.sliding_window_view(padded, size)[::hop][:count] * window
+    return np.fft.rfft(frames, axis=1)
+
+
+def _istft(spectrum: np.ndarray, size: int, hop: int, length: int) -> np.ndarray:
+    window = np.hanning(size).astype(np.float32)
+    frames = np.fft.irfft(spectrum, n=size, axis=1).astype(np.float32) * window
+    count, parts = frames.shape[0], size // hop       # `size` is a whole number of hops
+    out = np.zeros((count + parts - 1) * hop, np.float32)
+    norm = np.zeros_like(out)
+    squared = np.broadcast_to(window ** 2, frames.shape)
+    for j in range(parts):  # overlap-add, one hop-wide slice of every frame at a time
+        at = j * hop
+        out[at: at + count * hop] += frames[:, j * hop: (j + 1) * hop].reshape(-1)
+        norm[at: at + count * hop] += squared[:, j * hop: (j + 1) * hop].reshape(-1)
+    norm[norm < 1e-6] = 1.0
+    return (out / norm)[size: size + length]
+
+
+def _box_smooth(values: np.ndarray, width: int) -> np.ndarray:
+    """A moving average of `width` bins along the last axis, all rows at once (edges use fewer bins)."""
+    half = width // 2
+    padded = np.concatenate([np.zeros((values.shape[0], half + 1), values.dtype), values,
+                             np.zeros((values.shape[0], half), values.dtype)], axis=1)
+    cumulative = np.cumsum(padded, axis=1, dtype=np.float64)
+    total = cumulative[:, width:] - cumulative[:, :-width]
+    counts = np.minimum(np.arange(values.shape[1]) + half + 1, values.shape[1]) - np.maximum(
+        np.arange(values.shape[1]) - half, 0)
+    return (total[:, : values.shape[1]] / counts).astype(np.float32)
+
+
+def _breath_noise(audio: np.ndarray, sample_rate: int, seed: int | None = 0) -> np.ndarray:
+    """Noise shaped like the speech: its smooth spectral envelope (the vowels and consonants), no voicing.
+
+    The envelope of every frame is found by cepstral smoothing, which keeps the broad formant
+    peaks and drops the harmonics (the pitch); it is then given random phase, so what is left is
+    breath with the words in it. The sound below ~180 Hz goes: a whisper has no voice to carry
+    it, and keeping it is what makes a whisper growl. The level is the input's.
+    """
+    size = 512 if sample_rate <= 24000 else 1024
+    hop = size // 4
+    spectrum = _stft(audio, size, hop)
+    magnitude = np.abs(spectrum).astype(np.float64)
+    floor = 1e-4 * (magnitude.max() + _EPS)
+    cepstrum = np.fft.irfft(np.log(magnitude + floor), n=size, axis=1)
+    keep = max(8, int(sample_rate / 1000) + 4)          # formants yes, harmonics no
+    lifter = np.zeros(size)
+    lifter[:keep] = 1.0
+    lifter[size - keep + 1:] = 1.0
+    envelope = np.exp(np.fft.rfft(cepstrum * lifter, axis=1).real) - floor
+    freqs = np.fft.rfftfreq(size, 1.0 / sample_rate)
+    envelope = np.maximum(envelope, 0.0) / (1.0 + (180.0 / np.maximum(freqs, 1.0)) ** 4)
+    phase = np.random.default_rng(seed).uniform(-np.pi, np.pi, envelope.shape)
+    out = _istft((envelope * np.exp(1j * phase)).astype(np.complex64), size, hop, audio.size)
+    return out * (np.sqrt(np.mean(audio ** 2)) + _EPS) / (np.sqrt(np.mean(out ** 2)) + _EPS)
+
+
+def whisper(audio: np.ndarray, sample_rate: int, seed: int | None = 0,
+            level_db: float = -8.0) -> np.ndarray:
+    """Whispered speech: the words as breath, `level_db` below the input (a whisper is quiet).
+
+    Shaped breath noise (see :func:`_breath_noise`): the vowels and consonants stay, the pitch and
+    everything below ~180 Hz go.
+    """
+    audio = _as_float(audio)
+    if audio.size < 512:
+        return audio
+    out = _breath_noise(audio, sample_rate, seed) * 10.0 ** (float(np.clip(level_db, -30.0, 0.0)) / 20.0)
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
+
+
+def soft(audio: np.ndarray, sample_rate: int) -> np.ndarray:
+    """A soft, slightly breathy voice: quieter, duller, with a little whisper mixed in."""
+    audio = _as_float(audio)
+    if audio.size < 512:
+        return np.clip(audio * 0.6, -1.0, 1.0)
+    # One-pole low-pass at roughly 4 kHz, as a truncated impulse response (no per-sample loop).
+    alpha = float(np.exp(-2.0 * np.pi * 4000.0 / sample_rate))
+    taps = max(8, int(np.ceil(np.log(1e-4) / np.log(max(alpha, 1e-6)))))
+    response = ((1.0 - alpha) * alpha ** np.arange(taps)).astype(np.float32)
+    dull = np.convolve(audio, response)[: audio.size].astype(np.float32)
+    mixed = 0.8 * dull + 0.2 * _breath_noise(audio, sample_rate)
+    return np.clip(mixed * 0.6, -1.0, 1.0).astype(np.float32)
+
+
+def compress(audio: np.ndarray, sample_rate: int, threshold_db: float = -26.0,
+             ratio: float = 3.0, window_ms: float = 20.0) -> np.ndarray:
+    """Dynamic range compression, then make-up gain back to the input's peak."""
+    audio = _as_float(audio)
+    if audio.size < 64:
+        return audio
+    block = max(16, int(sample_rate * window_ms / 1000))
+    count = int(np.ceil(audio.size / block))
+    padded = np.pad(audio, (0, count * block - audio.size))
+    level = np.sqrt(np.mean(padded.reshape(count, block) ** 2, axis=1)) + _EPS
+    level_db = 20.0 * np.log10(level)
+    over = np.maximum(level_db - threshold_db, 0.0)
+    gain_db = -over * (1.0 - 1.0 / ratio)
+    # Smooth the gain so blocks do not click.
+    gain_db = np.convolve(np.pad(gain_db, 2, mode="edge"), np.ones(5) / 5.0, mode="valid")
+    gain = np.repeat(10.0 ** (gain_db / 20.0), block)[: audio.size].astype(np.float32)
+    out = audio * gain
+    peak_in, peak_out = float(np.max(np.abs(audio))), float(np.max(np.abs(out)))
+    if peak_out > _EPS:
+        out = out * min(peak_in / peak_out, 4.0)
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
+
+
+def _smoothstep(x: np.ndarray) -> np.ndarray:
+    x = np.clip(x, 0.0, 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def breath(sample_rate: int, duration_ms: int = 350, volume: float = 1.0,
+           seed: int | None = None) -> np.ndarray:
+    """A quiet in-breath through the mouth, different every time (give `seed` to repeat one).
+
+    Noise whose spectrum moves while it lasts (duller at the start, brighter at the end, as the
+    mouth opens), with a soft attack, a gently falling plateau, a fade to silence at the end and an
+    uneven level. At `volume` 1 its level is about -34 dBFS RMS, whatever its length.
+    """
+    length = max(1, int(sample_rate * duration_ms / 1000))
+    rng = np.random.default_rng(seed)
+    white = rng.standard_normal(length).astype(np.float32)
+    level = 10.0 ** (-34.0 / 20.0) * float(np.clip(volume, 0.0, 2.0))
+    if length < 1024:
+        shaped = white * np.hanning(length)
+        return (shaped / (np.sqrt(np.mean(shaped ** 2)) + _EPS) * level).astype(np.float32)
+    size, hop = 512, 128
+    spectrum = _stft(white, size, hop)
+    freqs = np.fft.rfftfreq(size, 1.0 / sample_rate)[None, :]
+    progress = np.linspace(0.0, 1.0, spectrum.shape[0])[:, None]
+    # The broad peak (the mouth) climbs from about 0.9 kHz to 2.0 kHz; nothing below 200 Hz.
+    centre = 900.0 * (2000.0 / 900.0) ** progress * (1.0 + 0.08 * rng.standard_normal((1, 1)))
+    shape = np.exp(-0.5 * (np.log2(np.maximum(freqs, 1.0) / centre) / 1.2) ** 2)
+    shape = shape + 0.15 / (1.0 + (np.maximum(freqs, 1.0) / 500.0))      # a little low breath
+    shape = shape / (1.0 + (200.0 / np.maximum(freqs, 1.0)) ** 4) / (1.0 + (freqs / 7000.0) ** 4)
+    noise = _istft((spectrum * shape).astype(np.complex64), size, hop, length)
+    t = np.linspace(0.0, 1.0, length)
+    attack = _smoothstep(t / 0.28)
+    release = _smoothstep((1.0 - t) / 0.40)
+    plateau = 1.0 - 0.25 * t
+    # A slow, uneven wobble (a few hertz), never the same twice.
+    # The smoothing window never exceeds the signal: `mode="same"` returns the longer of the two.
+    window = min(max(8, sample_rate // 12), length)
+    wobble = np.convolve(rng.standard_normal(length), np.hanning(window), mode="same")
+    wobble = 1.0 + 0.22 * wobble / (np.max(np.abs(wobble)) + _EPS)
+    out = noise * attack * release * plateau * wobble
+    out = out / (np.sqrt(np.mean(out ** 2)) + _EPS) * level
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
+
+
+def beep(sample_rate: int, duration_ms: int = 350, frequency: float = 1000.0) -> np.ndarray:
+    """A censor bleep."""
+    length = max(1, int(sample_rate * duration_ms / 1000))
+    t = np.arange(length, dtype=np.float32) / sample_rate
+    tone = 0.25 * np.sin(2.0 * np.pi * frequency * t)
+    fade = min(length // 8, int(sample_rate * 0.01))
+    if fade:
+        ramp = np.linspace(0, 1, fade, dtype=np.float32)
+        tone[:fade] *= ramp
+        tone[-fade:] *= ramp[::-1]
+    return tone.astype(np.float32)
+
+
+def declick(audio: np.ndarray, sample_rate: int, threshold: float = 0.02, ms: float = 4.0) -> np.ndarray:
+    """`audio` with a short fade where it starts or ends on a sample louder than `threshold`.
+
+    Speech that begins or stops mid-wave is a click against the silence or the breath beside it.
+    An edge already near zero (what a voice normally gives) is left alone, so the common case is
+    the same array back, not a copy.
+    """
+    audio = _as_float(audio)
+    fade = min(audio.size // 2, max(1, int(sample_rate * ms / 1000)))
+    if audio.size < 2 or (abs(float(audio[0])) <= threshold and abs(float(audio[-1])) <= threshold):
+        return audio
+    audio = audio.copy()
+    ramp = np.linspace(0.0, 1.0, fade, dtype=np.float32)
+    if abs(float(audio[0])) > threshold:
+        audio[:fade] *= ramp
+    if abs(float(audio[-1])) > threshold:
+        audio[-fade:] *= ramp[::-1]
+    return audio
+
+
+def resample_rate(audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
+    """Resample *audio* from *sr* to *target_sr* Hz (polyphase; linear without scipy)."""
+    if sr == target_sr:
+        return audio
+    try:
+        from scipy.signal import resample_poly
+        from math import gcd
+        g = gcd(sr, target_sr)
+        return resample_poly(audio, target_sr // g, sr // g).astype(np.float32)
+    except Exception:
+        n = int(round(len(audio) * target_sr / sr))
+        return np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
+
+
+def _biquad(kind: str, rate: int) -> Tuple[np.ndarray, np.ndarray]:
+    """K-weighting stage coefficients, ``pyloudnorm.IIRfilter`` designs them per rate."""
+    if kind == "high_shelf":
+        gain, q, fc = 4.0, 0.7071752369554196, 1681.9744509555319
+    else:
+        gain, q, fc = 0.0, 0.5003270373238773, 38.13547087602444
+    a = 10 ** (gain / 40.0)
+    w0 = 2.0 * math.pi * (fc / rate)
+    alpha = math.sin(w0) / (2.0 * q)
+    cos = math.cos(w0)
+    if kind == "high_shelf":
+        root = math.sqrt(a)
+        b = np.array([a * ((a + 1) + (a - 1) * cos + 2 * root * alpha),
+                      -2 * a * ((a - 1) + (a + 1) * cos),
+                      a * ((a + 1) + (a - 1) * cos - 2 * root * alpha)])
+        den = np.array([(a + 1) - (a - 1) * cos + 2 * root * alpha,
+                        2 * ((a - 1) - (a + 1) * cos),
+                        (a + 1) - (a - 1) * cos - 2 * root * alpha])
+    else:
+        b = np.array([(1 + cos) / 2, -(1 + cos), (1 + cos) / 2])
+        den = np.array([1 + alpha, -2 * cos, 1 - alpha])
+    return b / den[0], den / den[0]
+
+
+def integrated_loudness(audio: np.ndarray, rate: int, block_size: float = 0.400) -> float:
+    """Gated integrated loudness of mono *audio* in LUFS (ITU-R BS.1770-4).
+
+    Reimplemented in numpy/scipy rather than pulled in as a dependency: it is two
+    biquads and a two-stage gate, and ``pyloudnorm`` would be a new hard requirement
+    for every phoonnx install. Returns ``-inf`` for silence, which
+    :func:`normalize_loudness` passes through unchanged.
+    """
+    from scipy.signal import lfilter
+    x = np.asarray(audio, np.float64).reshape(-1)
+    for kind in ("high_shelf", "high_pass"):
+        b, a = _biquad(kind, rate)
+        x = lfilter(b, a, x)
+
+    step = 0.25  # 75 % overlap
+    duration = x.shape[0] / rate
+    num_blocks = int(round((duration - block_size) / (block_size * step)) + 1)
+    if num_blocks < 1:
+        return -np.inf
+    z = np.empty(num_blocks)
+    for j in range(num_blocks):
+        lo = int(block_size * (j * step) * rate)
+        hi = int(block_size * (j * step + 1) * rate)
+        z[j] = np.sum(np.square(x[lo:hi])) / (block_size * rate)
+    with np.errstate(divide="ignore"):
+        loudness = -0.691 + 10.0 * np.log10(z)
+
+    gated = z[loudness > -70.0]
+    if gated.size == 0:
+        return -np.inf
+    with np.errstate(divide="ignore"):
+        relative = -0.691 + 10.0 * np.log10(gated.mean()) - 10.0
+    gated = z[(loudness > -70.0) & (loudness > relative)]
+    if gated.size == 0:
+        return -np.inf
+    return float(-0.691 + 10.0 * np.log10(gated.mean()))
+
+
+def normalize_loudness(audio: np.ndarray, target: float = -18.0,
+                       peak_limit: float = -1.0, *, rate: int,
+                       block_size: float = 0.400) -> np.ndarray:
+    """Loudness-normalize *audio* to *target* LUFS, then peak-limit it to *peak_limit* dBFS.
+
+    This is OuteTTS's ``process_audio_tensor``. Clips shorter than one gating block are
+    zero-padded for the measurement and trimmed back after, as upstream does.
+    """
+    x = np.asarray(audio, np.float64).reshape(-1)
+    original = x.shape[0]
+    if original == 0:
+        return np.zeros(0, np.float32)
+    minimum = int(block_size * rate)
+    measured = integrated_loudness(
+        np.pad(x, (0, max(0, minimum - original))), rate, block_size)
+    if np.isfinite(measured):
+        x = x * (10 ** ((target - measured) / 20.0))
+    peak = float(np.max(np.abs(x)))
+    threshold = 10 ** (peak_limit / 20.0)
+    if peak > threshold:
+        x = x * threshold / peak
+    return np.asarray(x[:original], np.float32)

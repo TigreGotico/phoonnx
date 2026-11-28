@@ -1,0 +1,44 @@
+{
+    "vosk/tamara": {
+        "voice_id": "vosk/tamara",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/9a43ee9465612f37b77041c60770b84ac84942e1/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/9a43ee9465612f37b77041c60770b84ac84942e1/phoonnx.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-tamara-vosk/resolve/9a43ee9465612f37b77041c60770b84ac84942e1/dictionary",
+        "phoneme_type": "vosk",
+        "lang": "ru-RU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "vosk",
+        "engine": "vosk"
+    },
+    "vosk/irina": {
+        "voice_id": "vosk/irina",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/4781b8cb61d96552b2f7b684397fa2018aae4b70/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/4781b8cb61d96552b2f7b684397fa2018aae4b70/phoonnx.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-irina-vosk/resolve/4781b8cb61d96552b2f7b684397fa2018aae4b70/dictionary",
+        "phoneme_type": "vosk",
+        "lang": "ru-RU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "vosk",
+        "engine": "vosk"
+    },
+    "vosk/natasha": {
+        "voice_id": "vosk/natasha",
+        "model_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/d0afcfd30fe0ef0857356ad65b3980e5e72d3a71/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/d0afcfd30fe0ef0857356ad65b3980e5e72d3a71/phoonnx.json",
+        "dictionary_url": "https://huggingface.co/Phoonnx/vits-ru_ru-natasha-vosk/resolve/d0afcfd30fe0ef0857356ad65b3980e5e72d3a71/dictionary",
+        "phoneme_type": "vosk",
+        "lang": "ru-RU",
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "vocab_url": null,
+        "phoneme_map_url": null,
+        "alphabet": "vosk",
+        "engine": "vosk"
+    }
+}

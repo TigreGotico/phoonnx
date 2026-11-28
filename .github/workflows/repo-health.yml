@@ -1,0 +1,17 @@
+name: Repo Health
+
+on:
+  pull_request:
+    branches: [dev, master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  repo_health:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/repo-health.yml@dev
+    secrets: inherit
+    with:
+      version_file: 'phoonnx/version.py'

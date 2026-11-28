@@ -1,0 +1,119 @@
+{
+    "nipponjo/mixer-tts-ljspeech-80": {
+        "voice_id": "nipponjo/mixer-tts-ljspeech-80",
+        "model_url": "https://huggingface.co/Phoonnx/mixertts-en_us-ljspeech-80-espeak/resolve/4bcbbde99789c825c8443c90713d72bd3633edd2/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/mixertts-en_us-ljspeech-80-espeak/resolve/4bcbbde99789c825c8443c90713d72bd3633edd2/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "mixertts",
+        "lang": "en-US",
+        "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 211.4,
+            "pitch_std": 53.1
+        }
+    },
+    "nipponjo/mixer-tts-ljspeech-128": {
+        "voice_id": "nipponjo/mixer-tts-ljspeech-128",
+        "model_url": "https://huggingface.co/Phoonnx/mixertts-en_us-ljspeech-128-espeak/resolve/825db224db2ffb5a56b0aa410b491885b66038c6/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/mixertts-en_us-ljspeech-128-espeak/resolve/825db224db2ffb5a56b0aa410b491885b66038c6/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "mixertts",
+        "lang": "en-US",
+        "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 210.8,
+            "pitch_std": 53.4
+        }
+    },
+    "nipponjo/mixer-tts-ljspeech-384": {
+        "voice_id": "nipponjo/mixer-tts-ljspeech-384",
+        "model_url": "https://huggingface.co/Phoonnx/mixertts-en_us-ljspeech-384-espeak/resolve/a0ab87df0ad4c0d91cd0ab8e899ff045976c4810/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/mixertts-en_us-ljspeech-384-espeak/resolve/a0ab87df0ad4c0d91cd0ab8e899ff045976c4810/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "mixertts",
+        "lang": "en-US",
+        "vocoder_url": "https://huggingface.co/BSC-LT/vocos-mel-22khz/resolve/b4b331d85370cdd94c644b5d1922a27a0b219c15/mel_spec_22khz_univ.onnx",
+        "vocoder_type": "vocos",
+        "engine_options": {
+            "pitch_mean": 211.6,
+            "pitch_std": 52.4
+        }
+    },
+    "nipponjo/tts-arabic-mixer80": {
+        "voice_id": "nipponjo/tts-arabic-mixer80",
+        "model_url": "https://huggingface.co/Phoonnx/mixertts-ar-mixer80-mantoq/resolve/724d946ab904c3b0aa174e2ce08daf9c19900d74/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/mixertts-ar-mixer80-mantoq/resolve/724d946ab904c3b0aa174e2ce08daf9c19900d74/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "mantoq",
+        "alphabet": "buckwalter",
+        "engine": "mixertts",
+        "lang": "ar",
+        "vocoder_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/vocoder.json",
+        "vocoder_type": "hifigan",
+        "engine_options": {
+            "pitch_mean": [
+                130.7,
+                104.0,
+                220.9,
+                205.4
+            ],
+            "pitch_std": [
+                22.1,
+                10.3,
+                33.2,
+                39.0
+            ]
+        }
+    },
+    "nipponjo/tts-arabic-mixer128": {
+        "voice_id": "nipponjo/tts-arabic-mixer128",
+        "model_url": "https://huggingface.co/Phoonnx/mixertts-ar-mixer128-mantoq/resolve/094c56b50da9af7ff16603f92ede1ee2655615ac/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/mixertts-ar-mixer128-mantoq/resolve/094c56b50da9af7ff16603f92ede1ee2655615ac/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "mantoq",
+        "alphabet": "buckwalter",
+        "engine": "mixertts",
+        "lang": "ar",
+        "vocoder_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/model.onnx",
+        "vocoder_config_url": "https://huggingface.co/Phoonnx/hifigan-ar-nipponjo/resolve/c93a80616dee828de265d456989a365050728868/vocoder.json",
+        "vocoder_type": "hifigan",
+        "engine_options": {
+            "pitch_mean": [
+                130.4,
+                103.7,
+                219.9,
+                204.8
+            ],
+            "pitch_std": [
+                22.5,
+                10.7,
+                34.7,
+                39.3
+            ]
+        }
+    }
+}

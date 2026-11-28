@@ -1,0 +1,27 @@
+{
+    "parlertts/adia/wo": {
+        "voice_id": "parlertts/adia/wo",
+        "model_url": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/decoder_prefill.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/phoonnx.json",
+        "vocab_url": null,
+        "tokens_url": null,
+        "tokenizer_config_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "unicode",
+        "alphabet": "graphemes",
+        "engine": "indic_parler",
+        "lang": "wo",
+        "aux_model_urls": {
+            "text_encoder_path": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/text_encoder.onnx",
+            "decoder_decode_path": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/decoder_decode.onnx",
+            "dac_decoder_path": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/dac_decoder.onnx",
+            "prompt_tokenizer_path": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/tokenizer.json",
+            "description_tokenizer_path": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/description_tokenizer.json",
+            "model_config_path": "https://huggingface.co/Phoonnx/parlertts-wo-adia-unicode/resolve/9cb9caf3eb9a79d331a0be89f93788ab27f390dd/config.json"
+        },
+        "engine_options": {
+            "description": "A clear and educational voice, with a flow adapted to learning"
+        },
+        "display_name": "Adia (Wolof, Parler-TTS)"
+    }
+}

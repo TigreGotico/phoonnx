@@ -1,207 +1,79 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TigreGotico/phoonnx)
 
-# Phoonnx
+<img src="thumb.png" alt="phoonnx" width="480"/>
 
-A Python library for multilingual phonemization and Text-to-Speech (TTS) using ONNX models.
+# phoonnx
 
------
+<!-- agent-hint
+covers: what phoonnx is, how to install it and speak a first sentence, the extras, and where each part of the docs lives
+source: pyproject.toml, phoonnx/model_manager.py:TTSModelManager, phoonnx/voice.py:TTSVoice.synthesize_wav, phoonnx/engines/__init__.py:list_engines, phoonnx/voice_index/OVOS.json, docker-compose.yml, LICENSE
+generated: no
+verify: .venv/bin/python -I -c "import re, sys, json, glob, tomllib; import phoonnx.engines as e; t = open('README.md').read().split(chr(10) + '-' + '->', 1)[1]; ids = set(); [ids.update(json.load(open(f))) for f in glob.glob('phoonnx/voice_index/*.json')]; extras = tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']; used = set(re.findall(r'phoonnx-voices download (\S+)', t) + re.findall(r'voices\[\"([^\"]+)\"\]', t) + re.findall(r'\"voice\": \"([^\"]+)\"', t)); named = set(re.findall(r'phoonnx\[([a-z0-9-]+)\]', t)); bad = sorted(used - ids) + sorted(named - set(extras)) + ([] if f'{len(e.list_engines())} synthesis engines' in t else ['engine count']) + ([] if open('docker-compose.yml').read().split('image: ')[1].split()[0] in t else ['image']); print(bad); sys.exit(bool(bad))"
+see: docs/index.md, docs/quickstart.md, docs/installation.md, AGENTS.md
+-->
 
-## Introduction
+phoonnx turns text into speech with ONNX voices. It loads voices from many ecosystems, such as
+native phoonnx, Piper, Mimic 3, Coqui, MMS and Transformers, through one ONNX Runtime
+interface, and it includes a toolkit to train your own voices.
 
-`phoonnx` is a comprehensive toolkit for performing high-quality, efficient TTS inference using ONNX-compatible models.
-It provides a flexible framework for text normalization, phonemization, and speech synthesis, with built-in support for
-multiple languages and phonemic alphabets. The library is also designed to work with models trained using
-`phoonnx_train`, including utilities for dataset preprocessing and exporting models to the ONNX format.
-
-It supports over 1000 languages and voices from various frameworks (phoonnx, piper, mimic3, coqui, MMS, transformers). The full list can be found in [VOICES.md](./VOICES.md)
-
------
-
-## Features
-
-- **Efficient Inference:** Leverages `onnxruntime` for fast and efficient TTS synthesis.
-- **Multilingual Support:** Supports a wide range of languages and phonemic alphabets, including IPA, ARPA, Hangul (Korean), and Pinyin (Chinese).
-- **Multiple Phonemizers:** Integrates with various phonemizers like eSpeak, Gruut, and Epitran to convert text to phonemes.
-- **Advanced Text Normalization:** Includes robust utilities for expanding contractions and pronouncing numbers and dates.
-- **Dataset Preprocessing:** Provides a command-line tool to prepare LJSpeech-style datasets for training.
-- **Model Export:** A script is included to convert trained models into the ONNX format, ready for deployment.
-
------
-
-## Installation
-
-As `phoonnx` is available on PyPI, you can install it using pip.
+## Install
 
 ```bash
-pip install phoonnx
+pip install --pre phoonnx
 ```
 
------
+phoonnx publishes alpha releases, so you must use the `--pre` flag. Without it, pip installs
+the last stable release, which does not have the engine registry or most of the features on
+these pages.
 
-## Usage
+## Quickstart
 
-### Synthesizing Speech
+Fill the local voice catalog, then download one voice:
 
-The main component for inference is the `TTSVoice` class. You can load a model and synthesize speech from text as follows:
+```bash
+phoonnx-voices update-cache
+phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_unicode
+```
+
+Speak a sentence with it from Python:
 
 ```python
 import wave
+from phoonnx.model_manager import TTSModelManager
 
-from phoonnx.config import VoiceConfig, SynthesisConfig
-from phoonnx.voice import TTSVoice
+manager = TTSModelManager()
+manager.load()
+manager.merge_default_voices()
 
-# Load a pre-trained ONNX model and its configuration
-voice = TTSVoice.load("model.onnx", "config.json")
-
-# Configure the synthesis parameters (optional)
-synthesis_config = SynthesisConfig(
-    noise_scale=0.667,
-    length_scale=1.0,
-    noise_w_scale=0.8,
-    enable_phonetic_spellings=True, # apply pronunciation fixes, see "locale" folder in this repo
-    add_diacritics=False  # for arabic and hebrew
-)
-
-# Synthesize audio from text
-text = "Hello, this is a test of the phoonnx library."
-slug = f"phoonnx_{voice.config.phoneme_type.value}_{voice.config.lang_code}"
-with wave.open(f"{slug}.wav", "wb") as wav_file:
-    voice.synthesize_wav(text, wav_file, synthesis_config)
-
+voice = manager.voices["OpenVoiceOS/phoonnx_pt-PT_miro_unicode"].load()
+with wave.open("hello.wav", "wb") as wav_file:
+    voice.synthesize_wav("Olá, isto é um teste.", wav_file)
 ```
 
------
+The script writes `hello.wav`. This voice reads text with no phonemizer, so the base install
+is sufficient. The [Quickstart](docs/quickstart.md) gives the same steps with the output of
+each command.
 
-## Integration and Management
+## What it does
 
-`phoonnx` provides out-of-the-box integration for Open Voice OS and a powerful command-line interface for voice model management.
+| Task | Page |
+|---|---|
+| Install the extra that a voice needs, and set up a GPU runtime | [Installation](docs/installation.md) |
+| Find a voice for a language and download it | [Choose a voice](docs/choose_voice.md), [Voice manager](docs/voice_manager.md) |
+| Synthesize to a file or a stream, on CPU or GPU | [Usage](docs/usage.md), [Streaming](docs/streaming.md) |
+| Run 31 synthesis engines behind one adapter registry | [Engines](docs/engines.md) |
+| Clone a speaker from a reference clip | [Cloning](docs/cloning.md) |
+| Speak with no network | [Use phoonnx offline](docs/offline.md) |
+| Train and export your own voice | [Training quickstart](docs/training/quickstart.md) |
+| Use phoonnx as the OpenVoiceOS text-to-speech plugin | [OVOS plugin](docs/ovos_plugin.md) |
+| Run the `ghcr.io/tigregotico/phoonnx:dev` image as an HTTP server | [Docker TTS server](docs/docker.md), [Deployment](docs/deployment.md) |
 
-### Open Voice OS Plugin
+The [documentation index](docs/index.md) lists every page in reading order.
 
-`phoonnx` includes a native OVOS TTS plugin `ovos-tts-plugin-phoonnx` which allows the library to work seamlessly within the Open Voice OS ecosystem. 
+## License
 
-Once installed, it can be configured as a standard TTS engine and automatically manages model fetching and loading.
+phoonnx is licensed under Apache-2.0. Copyright TigreGotico Lda. Some model weights have their own license, for example the OpenRAIL license of SuperTonic: see [SuperTonic](docs/training/engines/supertonic.md). The [Phonemizers](docs/phonemizers.md) page credits the language components.
 
-```json
-  "tts": {
-    "module": "ovos-tts-plugin-phoonnx",
-    "ovos-tts-plugin-phoonnx": {
-      "voice": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone"
-    }
-  }
-```
+---
 
-if `"voice"` is not provided then the first model that supports your language will be selected
-
-voice synthesis parameters usually come from the model `.json` file, but you can override them (globally) in `mycroft.conf`
-
-```json
-  "tts": {
-    "module": "ovos-tts-plugin-phoonnx",
-    "ovos-tts-plugin-phoonnx": {
-      "voice": "OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone",
-      "enable_phonetic_spellings": true,
-      "noise_scale": 0.667,
-      "length_scale": 1,
-      "noise_w": 0.8,
-      "add_diacritics": false
-    }
-  }
-```
-
-### Command Line Interface (CLI)
-
-Phoonnx includes a command line utility, `phoonnx-voices` provides a set of tools to manage and interact with the available TTS voice models. 
-
-This is particularly useful for pre-downloading models and viewing supported languages.
-
-#### Usage
-
-```bash
-# Update the local cache of all available voices from upstream sources
-phoonnx-voices update-cache
-
-# List all supported languages
-phoonnx-voices list-langs
-
-# List all available voices (simple list)
-phoonnx-voices list-voices
-
-# List all voices with detailed info
-phoonnx-voices list-voices --verbose
-
-# List voices for a specific language (e.g., Portuguese)
-phoonnx-voices list-voices --lang pt-PT
-
-# Download the model files for a specific voice ID
-phoonnx-voices download OpenVoiceOS/phoonnx_pt-PT_miro_tugaphone
-```
-
------
-
-### Training
-
-See the dedicated [training.md](/TRAINING.md)
-
------
-
-## Supported Phonemizers
-
-`phoonnx` leverages several external Grapheme-to-Phoneme (G2P) and text-processing libraries to provide flexible and
-high-quality phonemization across many languages.
-
-You should prefer phonemizers trained on full sentences vs individual words if available
-
-The core phonemizer classes are summarized in the table below, listing the supported languages, the source library they
-wrap, and the output alphabets they can generate.
-
-***
-
-| Language(s)         | Phonemizer Class       | Source/Library                                                                                                     | Output Alphabets             | 
-|:--------------------|:-----------------------|:-------------------------------------------------------------------------------------------------------------------|:-----------------------------|
-| **Multilingual**    | `ByT5Phonemizer`       | [OpenVoiceOS ByT5](https://huggingface.co/collections/OpenVoiceOS/g2p-models-6886a8d612825c3fe65befa0) ONNX Models | IPA                          | High-quality, model-based G2P for an extensive list of languages.                                                                           |
-| **Multilingual**    | `CharsiuPhonemizer`    | [Charsiu](https://github.com/lingjzhu/CharsiuG2P) ByT5 ONNX Model                                                  | IPA                          | Very extensive multilingual support, including many regional dialects and variants (e.g., `eng-uk`, `spa-me`, `zho-s`).                     |
-| **Multilingual**    | `EspeakPhonemizer`     | `espeak-ng` command-line tool                                                                                      | IPA                          | Broad language coverage, relying on the widely-used `espeak-ng` engine.                                                                     |
-| **Multilingual**    | `GruutPhonemizer`      | [gruut](https://github.com/rhasspy/gruut)                                                                          | IPA                          | A tokenizer, text cleaner, and IPA phonemizer for several human languages that supports SSML.                                               |
-| **Multilingual**    | `MisakiPhonemizer`     | [misaki](https://github.com/hexgrad/misaki)                                                                        | IPA                          | Misaki is a G2P engine designed for Kokoro models.                                                                                          |
-| **Multilingual**    | `TransphonePhonemizer` | [transphone](https://github.com/xinjli/transphone)                                                                 | IPA                          | It provides approximated phoneme tokenizers and G2P model for 7546 languages registered in the Glottolog database.                          |
-| **Multilingual**    | `EpitranPhonemizer`    | [epitran](https://github.com/dmort27/epitran)                                                                      | IPA                          | A tool for transcribing orthographic text as IPA                                                                                            |
-| **Mirandese (mwl)** | `MirandesePhonemizer`  | [mwl_phonemizer](https://github.com/TigreGotico/mwl_phonemizer)                                                                 | IPA                          | A tool for transcribing orthographic text as IPA                                                                                            |
-| **Arabic (ar)**     | `MantoqPhonemizer`     | [mantoq](https://github.com/mush42/mantoq)                                                                         | BUCKWALTER, IPA              | Translates unvoweled Arabic to phonemes, with optional conversion to IPA.                                                                   |
-| **Chinese (zh)**    | `JiebaPhonemizer`      | [jieba](https://github.com/fxsjy/jieba)                                                                            | HANZI                        | Segments Chinese text into words with spaces; useful for pre-processing.                                                                    |
-| **Chinese (zh)**    | `G2pMPhonemizer`       | [g2pC](https://github.com/Kyubyong/g2pC)                                                                           | IPA, Pinyin                  | CRF-based Grapheme-to-Phoneme converter                                                                                                     |
-| **Chinese (zh)**    | `G2pMPhonemizer`       | [g2pm](https://github.com/kakaobrain/g2pm)                                                                         | IPA, Pinyin                  | A Neural Grapheme-to-Phoneme Conversion Package for Mandarin Chinese                                                                        |
-| **Chinese (zh)**    | `XpinyinPhonemizer`    | [xpinyin](https://github.com/lxneng/xpinyin)                                                                       | IPA, Pinyin                  | basic pinyin generator with optional tone marks                                                                                             |
-| **Chinese (zh)**    | `PypinyinPhonemizer`   | [pypinyin](https://github.com/rainforest32/pypinyin)                                                               | IPA, Pinyin                  | comprehensive and accurate pinyin library                                                                                                   |
-| **English (en)**    | `G2PEnPhonemizer`      | [g2pE](https://github.com/Kyubyong/g2p)                                                                            | IPA                          | A deep learning seq2seq framework based on TensorFlow                                                                                       |
-| **English (en)**    | `OpenPhonemizer`       | [OpenPhonemizer](https://github.com/NeuralVox/OpenPhonemizer)                                                      | IPA                          | IPA Phonemizer powered by deep learning. This Phonemizer attempts to replicate the espeak Phonemizer while remaining permissively-licensed. |
-| **English (en)**    | `DeepPhonemizer`       | [DeepPhonemizer](https://github.com/spring-media/DeepPhonemizer)                                                   | IPA / ARPA                   | Uses pre-trained deep learning models for English.                                                                                          |
-| **Galician (gl)**   | `CotoviaPhonemizer`    | [cotovia](https://github.com/TigreGotico/cotovia-mirror)                                                           | IPA, Native Cotovia Phonemes | Relies on the `cotovia`executable for Galician phonemization.                                                                               |
-| **Hebrew (he)**     | `PhonikudPhonemizer`   | [phonikud](https://github.com/thewh1teagle/phonikud)                                                               | IPA                          | Converts Hebrew text to IPA phonemes.                                                                                                       |
-| **Japanese (ja)**   | `OpenJTaklPhonemizer`  | [pyopenjtalk](https://github.com/r9y9/pyopenjtalk)                                                                 | HEPBURN, KANA                | High-quality Japanese G2P.                                                                                                                  |
-| **Japanese (ja)**   | `CutletPhonemizer`     | [cutlet](https://github.com/polm/cutlet)                                                                           | HEPBURN, KUNREI, NIHON       | Provides various Romanization standards.                                                                                                    |
-| **Japanese (ja)**   | `PyKakasiPhonemizer`   | [pykakasi](https://codeberg.org/miurahr/pykakasi)                                                                  | HEPBURN, KANA, HIRA          | Romanization and Kana conversion.                                                                                                           |
-| **Korean (ko)**     | `G2PKPhonemizer`       | [g2pK](https://github.com/Kyubyong/g2pK)                                                                           | IPA, HANGUL                  | Provides G2P for Korean, with optional IPA conversion.                                                                                      |
-| **Korean (ko)**     | `KoG2PPhonemizer`      | [KoG2P](https://github.com/scarletcho/KoG2P)                                                                       | IPA, HANGUL                  | Provides G2P for Korean, with optional IPA conversion.                                                                                      |
-| **Persian (fa)**    | `PersianPhonemizer`    | [persian_phonemizer](https://github.com/de-mh/persian_phonemizer)                                                  | ERAAB, IPA                   | Supports both standard IPA and the native ERAAB (diacritical) representations.                                                              |
-| **Vietnamese (vi)** | `VIPhonemePhonemizer`  | [Viphoneme](https://github.com/v-nhandt21/Viphoneme)                                                               | IPA                          | Uses the `viphoneme` library for Vietnamese G2P.                                                                                            |
-
------
-
-### Credits
-
-Phoonnx is built in the shoulders of giants
-
-- [jaywalnut310/vits](https://github.com/jaywalnut310/vits) - the original VITS implementation, the back-bone architecture of phoonnx models
-- [MycroftAI/mimic3](https://github.com/MycroftAI/mimic3) and [rhasspy/piper](https://github.com/rhasspy/piper) - for inspiration and reference implementation of a phonemizer for pre-processing inputs
-
-Individual languages greatly benefit from domain-specific knowledge, for convenience phoonnx also bundles code from
-
-- [uvigo/cotovia](https://github.com/TigreGotico/cotovia-mirror) for galician phonemization (pre-compiled binaries bundled)
-- [mush42/mantoq](https://github.com/mush42/mantoq) for arabic phonemization
-- [mush42/libtashkeel](https://github.com/mush42/libtashkeel) for arabic diacritics
-- [scarletcho/KoG2P](https://github.com/scarletcho/KoG2P) for korean phonemization
-- [stannam/hangul_to_ipa](https://github.com/stannam/hangul_to_ipa) a converter from Hangul to IPA
-- [chorusai/arpa2ipa](https://github.com/chorusai/arpa2ipa) a converter from Arpabet to IPA
-- [PaddlePaddle/PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech/blob/8097a56be811a540f4f62a95a9094296c374351a/paddlespeech/t2s/frontend/zh_normalization/) for chinese number verbalization
-
+[Home](docs/index.md)

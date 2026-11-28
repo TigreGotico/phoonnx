@@ -1,6 +1,7 @@
+import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Mapping, List, Dict, Optional, Any, Set, Union
+from typing import Mapping, List, Dict, FrozenSet, Optional, Any, Sequence, Set, Tuple, Union
 
 from phoonnx.util import LOG
 
@@ -194,8 +195,40 @@ DEFAULT_BLANK_WORD_TOKEN = " "  # padding between words
 
 STRESS: Set[str] = {"ˈ", "ˌ"}
 
+SPECIAL_TOKENS: Set[str] = {DEFAULT_PAD_TOKEN, DEFAULT_BOS_TOKEN,
+                            DEFAULT_EOS_TOKEN, DEFAULT_BLANK_WORD_TOKEN}
+
+
+def phoneme_map_seed(corpus_phonemes: Set[str], ipa: bool,
+                     include_defaults: bool = True) -> Set[str]:
+    """Symbols a new phoneme map is built from: the corpus symbols, plus the full
+    default IPA table unless include_defaults is False."""
+    syms = set(corpus_phonemes)
+    if ipa and include_defaults:
+        syms.update(DEFAULT_IPA_PHONEME_ID_MAP)
+    return syms
+
+
+def untrained_map_symbols(phoneme_id_map: Mapping[str, Any],
+                          corpus_phonemes: Set[str]) -> List[str]:
+    """Map symbols that never occur in the corpus. Their embeddings receive no
+    gradient during training, so feeding them at inference produces undefined audio."""
+    return sorted(k for k in phoneme_id_map
+                  if k not in corpus_phonemes and k not in SPECIAL_TOKENS)
+
 PUNCTUATION_MAP: Mapping[str, str] = {";": ",", ":": ",", "?": ".", "!": "."}
 """Default punctuation simplification into short (,) and long (.) pauses"""
+
+
+def _moved_to_compat(old: str, new: str):
+    """A static method that calls ``phoonnx.compat.<new>`` and warns that the name moved."""
+    def forward(*args, **kwargs):
+        from phoonnx import compat
+        from phoonnx.config import _warn_moved
+        _warn_moved(old, f"phoonnx.compat.{new}")
+        return getattr(compat, new)(*args, **kwargs)
+    forward.__doc__ = f"Deprecated. Use :func:`phoonnx.compat.{new}`."
+    return staticmethod(forward)
 
 
 @dataclass
@@ -204,7 +237,8 @@ class Vocabulary:
     A dataclass to store the mapping between characters/phonemes and their integer IDs,
     along with special tokens used in Text-to-Speech (TTS) models.
     """
-    char2idx: Dict[str, int]
+    char2idx: Dict[str, Union[int, List[int]]]
+    """Symbol to id. A list value is a symbol that gives several ids, or none."""
     pad: Optional[str] = None
     eos: Optional[str] = None
     bos: Optional[str] = None
@@ -220,146 +254,58 @@ class Vocabulary:
             cfg (Dict[str, Any]): Configuration mapping expected to contain "phoneme_id_map"
                 (mapping phoneme strings to integer IDs). Optional keys "pad", "eos", "bos",
                 and "blank" override the corresponding special token names; defaults are used when absent.
-        
+                A null "pad" means no pad.
+                The optional "blank_word" names the symbol put between words when
+                "add_blank_word" is true, as in the Mimic 3 "phonemes" section.
+
         Returns:
             Vocabulary: Vocabulary populated with the parsed char-to-index map and configured special tokens.
         """
-        char2idx: Dict[str, int] = cfg.get("phoneme_id_map", {})
-        pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
+        # A list value holds the ids of one symbol, as in a Piper phoneme_id_map.
+        # A one-id list is the plain id. A longer or empty list is kept whole: the
+        # symbol gives each id in turn, or no id (a Mimic 3 phoneme_map.txt entry).
+        char2idx: Dict[str, Union[int, List[int]]] = {
+            char: (idx[0] if len(idx) == 1 else list(idx)) if isinstance(idx, (list, tuple)) else idx
+            for char, idx in cfg.get("phoneme_id_map", {}).items()
+        }
+        pad: Optional[str] = cfg.get("pad", DEFAULT_PAD_TOKEN)
         eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
         bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
         blank: Optional[str] = cfg.get("blank") or DEFAULT_BLANK_TOKEN
-        return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank)
+        return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank,
+                          blank_word=cfg.get("blank_word"))
+
+    from_piper_config = _moved_to_compat("Vocabulary.from_piper_config", "vocabulary_from_piper_config")
+    from_mimic3_config = _moved_to_compat("Vocabulary.from_mimic3_config", "vocabulary_from_mimic3_config")
 
     @staticmethod
-    def from_piper_config(cfg: Dict[str, Any]) -> 'Vocabulary':
+    def from_supertonic_indexer(indexer: List[int]) -> 'Vocabulary':
         """
-        Creates a Vocabulary instance from a Piper configuration dictionary.
+        Build a Vocabulary from SuperTonic's ``unicode_indexer.json``.
 
-        The Piper config format assumes `phoneme_id_map` values are lists where the ID is the first element.
+        The published format is a flat list of length 65536: one entry per BMP
+        (Basic Multilingual Plane) codepoint, holding that codepoint's token id, or
+        ``-1`` for a codepoint the model was never trained on. This turns that table
+        into the standard ``char2idx`` shape (``chr(codepoint) -> id``), dropping the
+        unmapped (``-1``/``None``) entries, so it can drive a normal ``TTSTokenizer``
+        instead of a bespoke lookup. Keys are exactly the shipped characters — this
+        never applies Unicode normalization to them.
 
         Parameters:
-            cfg: The Piper configuration dictionary.
+            indexer: The parsed ``unicode_indexer.json`` list.
 
         Returns:
-            A Vocabulary instance.
+            Vocabulary: has no pad/eos/bos/blank tokens (SuperTonic uses none).
         """
-        # Piper format has value as list of [id, ...]
-        char2idx: Dict[str, int] = {char: idx[0] for char, idx in cfg.get("phoneme_id_map", {}).items()}
-        pad: Optional[str] = cfg.get("pad") or DEFAULT_PAD_TOKEN
-        eos: Optional[str] = cfg.get("eos") or DEFAULT_EOS_TOKEN
-        bos: Optional[str] = cfg.get("bos") or DEFAULT_BOS_TOKEN
-        blank: Optional[str] = cfg.get("blank") or DEFAULT_BLANK_TOKEN
-        return Vocabulary(char2idx=char2idx, pad=pad, eos=eos, bos=bos, blank=blank)
+        char2idx: Dict[str, int] = {
+            chr(codepoint): token_id
+            for codepoint, token_id in enumerate(indexer)
+            if token_id is not None and token_id >= 0
+        }
+        return Vocabulary(char2idx=char2idx)
 
-    @staticmethod
-    def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'Vocabulary':
-        """
-        Build a Vocabulary from a Mimic3 configuration dictionary and the contents of a tokens.txt file.
-        
-        Parameters:
-            cfg (Dict[str, Any]): Mimic3 configuration dict; special token names are read from the "phonemes" section.
-            tokens_txt (str): Raw text of a tokens.txt file that maps token strings to numeric IDs.
-        
-        Returns:
-            Vocabulary: A Vocabulary populated from the tokens file with special tokens (pad, bos, eos, blank, blank_word) set from the configuration when present.
-        """
-        voc: 'Vocabulary' = Vocabulary.from_tokens_txt(tokens_txt, id_first=True)
-        voc.pad = cfg.get("phonemes", {}).get("pad") or cfg.get("phonemes", {}).get("phoneme_separator")
-        voc.eos = cfg.get("phonemes", {}).get("eos")
-        voc.bos = cfg.get("phonemes", {}).get("bos")
-        voc.blank = cfg.get("phonemes", {}).get("blank")
-        voc.blank_word = cfg.get("phonemes", {}).get("blank_word") or cfg.get("phonemes", {}).get("word_separator")
-        return voc
-
-    @staticmethod
-    def from_tokens_txt(tokens_txt: str, id_first: bool = False) -> 'Vocabulary':
-        """
-        Creates a Vocabulary instance by parsing a tokens.txt style string (ID token per line).
-
-        Parameters:
-            tokens_txt: A string where each line is formatted as "ID token" (e.g., "0 <pad>").
-
-        Returns:
-            A Vocabulary instance with character-to-index mapping.
-        """
-        char2idx: Dict[str, int] = {}
-        blank_tok = None
-        for line in tokens_txt.split("\n"):
-            try:
-                if id_first:
-                    idx_str, token = line.split(" ", 1)
-                else:
-                    token, idx_str = line.split(" ", 1)
-                char2idx[token] = int(idx_str)
-                if int(idx_str) == 0:
-                    blank_tok = token
-            except ValueError:
-                # Skip empty lines or malformed lines
-                pass
-
-        return Vocabulary(char2idx=char2idx, blank=blank_tok)
-
-    @staticmethod
-    def from_coqui_config(cfg: Dict[str, Any]) -> 'Vocabulary':
-        """
-        Build a Vocabulary from a Coqui TTS configuration dictionary.
-        
-        Supports Coqui character classes `TTS.tts.models.vits.VitsCharacters` and
-        `TTS.tts.utils.text.characters.Graphemes`; maps configured characters, punctuations,
-        and special tokens (pad, bos, eos, blank) to integer IDs according to Coqui's settings.
-        
-        Parameters:
-            cfg (Dict[str, Any]): Coqui TTS configuration dictionary containing a "characters" section.
-        
-        Returns:
-            Vocabulary: A Vocabulary whose char2idx maps each token to its index and whose
-            special-token fields (pad, eos, bos, blank) are set from the configuration.
-        
-        Raises:
-            ValueError: If the configuration specifies an unsupported Coqui tokenizer class.
-        """
-        characters_cfg: Dict[str, Any] = cfg.get("characters", {})
-        pad: Optional[str] = characters_cfg.get("pad")
-        eos: Optional[str] = characters_cfg.get("eos")
-        bos: Optional[str] = characters_cfg.get("bos")
-        blank: Optional[str] = characters_cfg.get("blank")
-        punctuations: Optional[str] = characters_cfg.get("punctuations")
-        characters: Optional[str] = characters_cfg.get("characters")
-        clazz: str = characters_cfg.get("characters_class", "N/A")
-        sort: bool = characters_cfg.get("is_sorted", False)
-        unique: bool = characters_cfg.get("is_unique", False)
-        vocab: List[str]
-
-        if clazz == "TTS.tts.models.vits.VitsCharacters":
-            vocab = list(punctuations) + list(characters)
-            if pad:
-                vocab.insert(0, pad)
-            if cfg.get("add_blank"):
-                blank = blank or "<BLNK>"
-            if blank:
-                vocab.append(blank)
-        elif clazz == "TTS.tts.utils.text.characters.Graphemes":
-            vocab = list(characters)
-            if unique:
-                # NOTE: deduplication in coqui does not preserve order
-                # MUST be used together with is_sorted
-                vocab = list(set(vocab))
-            if sort:
-                vocab = sorted(vocab)
-            vocab = [blank, *vocab] if blank is not None and len(blank) > 0 else vocab
-            vocab = [bos, *vocab] if bos is not None and len(bos) > 0 else vocab
-            vocab = [eos, *vocab] if eos is not None and len(eos) > 0 else vocab
-            vocab = [pad, *vocab] if pad is not None and len(pad) > 0 else vocab
-            vocab = vocab + list(punctuations)
-        else:
-            raise ValueError(f"unsupported coqui tokenizer: {clazz}")
-
-        return Vocabulary(char2idx={char: idx for idx, char in enumerate(vocab)},
-                          pad=pad,
-                          eos=eos,
-                          bos=bos,
-                          blank=blank)
+    from_tokens_txt = _moved_to_compat("Vocabulary.from_tokens_txt", "vocabulary_from_tokens_txt")
+    from_coqui_config = _moved_to_compat("Vocabulary.from_coqui_config", "vocabulary_from_coqui_config")
 
     @property
     def idx2char(self) -> Dict[int, str]:
@@ -368,8 +314,9 @@ class Vocabulary:
         
         Returns:
             idx2char (Dict[int, str]): A dictionary mapping each token ID to its character.
+            A symbol with a list of ids has no entry of its own.
         """
-        return {idx: char for char, idx in self.char2idx.items()}
+        return {idx: char for char, idx in self.char2idx.items() if isinstance(idx, int)}
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -444,6 +391,24 @@ class TTSTokenizer:
     use_eos_bos: bool
     blank_at_end: bool
     blank_at_start: bool
+    fold_compounds: bool = True
+    """Greedily merge adjacent characters into multi-char vocabulary keys
+    (mimic3 diphthongs). Must be ``False`` when the input is already a list of
+    complete phoneme tokens (e.g. vosk), where merging would corrupt genuine
+    consonant clusters like ``s h`` -> ``sh``."""
+    blank_after: Optional[FrozenSet[str]] = None
+    """When set, a blank follows only the symbols in this set, in place of the
+    blank between every symbol. Piper's pinyin voices put it after a tone
+    digit, a pause mark or a space."""
+    unknown_id: Optional[int] = None
+    """The id that a symbol takes when the vocabulary lacks it. ``None`` drops
+    the symbol. A set id also turns off the decomposition and lowercase
+    fallbacks, because the model reads that id where its own inference code
+    puts it."""
+    not_found_characters: Set[str] = field(default_factory=set)
+    # multi-character keys by length, longest first; built at the first encode
+    _compounds: Optional[List[Tuple[int, Set[str]]]] = field(
+        default=None, init=False, repr=False, compare=False)
 
     @property
     def pad_id(self) -> Optional[int]:
@@ -479,49 +444,117 @@ class TTSTokenizer:
         """
         Map input characters (string or list of single-character strings) to their vocabulary token IDs.
         
-        If `add_blank_word` is enabled, space characters are mapped to the vocabulary's blank-word token. Unknown characters are discarded from the returned sequence but their first occurrences are recorded in `self.not_found_characters`. If `add_blank_word` and `blank_at_end` are enabled and a blank-word token exists, a trailing blank-word token is appended.
+        If `add_blank_word` is enabled, space characters are mapped to the vocabulary's blank-word token. An unknown character takes `unknown_id` when it is set, and is discarded otherwise; its first occurrence is recorded in `self.not_found_characters`. If `add_blank_word` and `blank_at_end` are enabled and a blank-word token exists, a trailing blank-word token is appended.
         
         Parameters:
             text (str | List[str]): Input text as a string or a list of single-character strings to encode.
         
         Returns:
-            List[int]: Sequence of token IDs corresponding to the input characters, with unknown characters removed.
+            List[int]: Sequence of token IDs corresponding to the input characters.
         """
-        # first pre-process phoneme_map to check for dipthongs having their own phoneme_id
-        # common in mimic3 models
-        compound_toks = sorted((k for k in self.vocabulary.char2idx
-                                if len(k) > 1), key=len, reverse=True)
+        return self._encode(text)[0]
+
+    def _encode(self, text: Union[str, List[str]]) -> Tuple[List[int], List[Optional[int]]]:
+        """Like :meth:`encode`, with the index in *text* of the symbol that gave each id.
+        An id that no symbol gave, such as the trailing word blank, has source ``None``."""
+        if self._compounds is None:
+            groups: Dict[int, Set[str]] = {}
+            if self.fold_compounds:
+                for key in self.vocabulary.char2idx:
+                    if len(key) > 1:
+                        groups.setdefault(len(key), set()).add(key)
+            self._compounds = sorted(groups.items(), reverse=True)
 
         token_ids: List[Optional[int]] = []
+        sources: List[Optional[int]] = []
 
-        compound_idxs: List[int] = []
+        compound_idxs: Set[int] = set()
 
         for i, char in enumerate(text):
             if i in compound_idxs:
                 idx = None
             elif self.add_blank_word and char == " ":
-                idx = self.blank_word_id
+                idx = self.blank_word_id if self._ends_word(token_ids) else None
             else:
                 idx = self.vocabulary.char2idx.get(char)
 
-                # Try to match compound phonemes starting at index i
-                for compound in compound_toks:
-                    n = len(compound)
+                # Try to match compound phonemes starting at index i, such as
+                # the diphthongs with their own id in mimic3 vocabularies
+                for n, compounds in self._compounds:
                     joined = ''.join(text[i:i + n])
-                    if joined == compound:
-                        idx = self.vocabulary.char2idx[compound]
-                        compound_idxs += [i for i in range(i, i+n)]
+                    if joined in compounds:
+                        idx = self.vocabulary.char2idx[joined]
+                        compound_idxs.update(range(i, i + n))
                         break
 
-            token_ids.append(idx)
+                if idx is None and self.unknown_id is not None:
+                    self._warn_unknown(char)
+                    idx = self.unknown_id
+
+                if idx is None and len(char) == 1:
+                    # Phonemizers emit precomposed characters (e.g. U+00F5 "õ") while
+                    # some vocabularies (e.g. Kokoro/StyleTTS2) only know the base
+                    # letter plus a separate combining mark. Fall back to the
+                    # canonical decomposition before giving up on the character.
+                    decomposed = unicodedata.normalize("NFD", char)
+                    if len(decomposed) > 1 and all(c in self.vocabulary.char2idx for c in decomposed):
+                        idx = [self.vocabulary.char2idx[c] for c in decomposed]
+
+                if idx is None and len(char) == 1:
+                    # A vocabulary built from lowercased training text holds no
+                    # uppercase letter, so a capital at the start of a sentence
+                    # is dropped and the model never says that sound. Fall back
+                    # to the lowercase form, which can only help: the character
+                    # is already out of vocabulary at this point.
+                    lowered = char.lower()
+                    if lowered != char and lowered in self.vocabulary.char2idx:
+                        idx = self.vocabulary.char2idx[lowered]
+
+                if idx is None:
+                    self._warn_unknown(char)
+
+            if isinstance(idx, list):
+                # a break entry such as ".": [#, ·, ·] starts with the word blank;
+                # drop it where no word ends, as phonemes2ids gives no second one
+                if (self.add_blank_word and idx and idx[0] == self.blank_word_id
+                        and not self._ends_word(token_ids)):
+                    idx = idx[1:]
+                token_ids.extend(idx)
+                sources.extend([i] * len(idx))
+            else:
+                token_ids.append(idx)
+                sources.append(i)
 
         # NOTE: mimic3 adds an extra word_blank at end, so we match that behaviour here
         #  instead of ending [..., BLANK, EOS] it ends with [..., BLANK, BLANK_WORD, BLANK, EOS]
-        if self.add_blank_word and self.blank_at_end and self.blank_word_id is not None:
+        if (self.add_blank_word and self.blank_at_end and self.blank_word_id is not None
+                and self._ends_word(token_ids)):
             token_ids.append(self.blank_word_id)
+            sources.append(None)
 
         # Filter out None values (out-of-vocabulary characters)
-        return [t for t in token_ids if t is not None]
+        kept = [(t, src) for t, src in zip(token_ids, sources) if t is not None]
+        return [t for t, _ in kept], [src for _, src in kept]
+
+    def _warn_unknown(self, char: str) -> None:
+        """Log the first time that the vocabulary lacks *char*, with what the tokenizer does instead."""
+        if char in self.not_found_characters:
+            return
+        self.not_found_characters.add(char)
+        action = "dropping it" if self.unknown_id is None else f"reading it as id {self.unknown_id}"
+        LOG.warning(f"Out-of-vocabulary phoneme {char!r} "
+                    f"(codepoints: {[hex(ord(c)) for c in char]}) "
+                    f"not found in vocabulary, {action}")
+
+    def _ends_word(self, token_ids: List[Optional[int]]) -> bool:
+        """Whether a word blank goes after *token_ids*.
+
+        Mimic 3 (phonemes2ids) puts the word blank after each word that gives
+        at least one id. So a space after a word blank, a space at the start, or
+        a trailing space after the final word blank gives no second one.
+        """
+        last = next((t for t in reversed(token_ids) if t is not None), None)
+        return last is not None and last != self.blank_word_id
 
     def tokenize(self, text: Union[str, List[str]]) -> List[int]:
         """
@@ -535,19 +568,61 @@ class TTSTokenizer:
         Returns:
             List[int]: Sequence of token IDs after applying the configured transformations.
         """
-        token_ids: List[int] = self.encode(text)
+        return self._tokenize(text)[0]
 
-        # 2. Inter-character Blank Insertion
-        if self.add_blank_char and self.blank_id is not None:
+    def tokenize_with_streams(self, text: Union[str, List[str]],
+                              streams: Mapping[str, Sequence[int]]) -> Tuple[List[int], Dict[str, List[int]]]:
+        """
+        Tokenize *text* with the side streams that a phonemizer gives beside its symbols.
+
+        Each stream holds one value per symbol of *text*. Each id keeps the value
+        of the symbol that gave it, and an id that the tokenizer adds (a blank,
+        BOS or EOS) gets the neutral value 0. A word blank keeps the value of its
+        space, and a folded compound the value of its first symbol. So every
+        returned stream is as long as the ids and in step with them.
+
+        Returns:
+            Tuple[List[int], Dict[str, List[int]]]: The token IDs and the streams.
+        """
+        token_ids, sources = self._tokenize(text)
+        return token_ids, {name: [0 if src is None else values[src] for src in sources]
+                           for name, values in streams.items()}
+
+    def _tokenize(self, text: Union[str, List[str]]) -> Tuple[List[int], List[Optional[int]]]:
+        """The ids of :meth:`tokenize`, with the index in *text* of the symbol behind each (``None`` for an added id)."""
+        token_ids, sources = self._encode(text)
+
+        # 2. Blank Insertion: after the symbols of blank_after, or between every symbol
+        if self.blank_after is not None:
+            if self.blank_id is not None:
+                token_ids, sources = self._blank_after_symbols(text, token_ids, sources)
+        elif self.add_blank_char and self.blank_id is not None:
             token_ids = self.intersperse_blank_char(token_ids)
+            sources = self._intersperse(sources, None)
         # 3. Start Blank Insertion (only if intersperse wasn't done, as intersperse already handles start/end)
         elif self.blank_at_start and self.blank_id is not None:
             token_ids.insert(0, self.blank_id)
+            sources.insert(0, None)
 
         # 4. BOS/EOS Padding
         if self.use_eos_bos and self.vocabulary.bos_id is not None and self.vocabulary.eos_id is not None:
             token_ids = self.pad_with_bos_eos(token_ids)
-        return token_ids
+            sources = [None] + sources + [None]
+        return token_ids, sources
+
+    def _blank_after_symbols(self, text: Union[str, List[str]], token_ids: List[int],
+                             sources: List[Optional[int]]) -> Tuple[List[int], List[Optional[int]]]:
+        """*token_ids* with a blank after the last id of each symbol in :attr:`blank_after`."""
+        ids: List[int] = []
+        srcs: List[Optional[int]] = []
+        for k, (token_id, src) in enumerate(zip(token_ids, sources)):
+            ids.append(token_id)
+            srcs.append(src)
+            symbol_ends = k + 1 == len(sources) or sources[k + 1] != src
+            if src is not None and symbol_ends and text[src] in self.blank_after:
+                ids.append(self.blank_id)
+                srcs.append(None)
+        return ids, srcs
 
     def pad_with_bos_eos(self, token_sequence: List[int]) -> List[int]:
         """
@@ -587,8 +662,11 @@ class TTSTokenizer:
         blank_id = self.vocabulary.blank_id
         if blank_id is None:
             return token_sequence
+        return self._intersperse(token_sequence, blank_id)
 
-        result: List[int] = [blank_id] * (len(token_sequence) * 2 + 1)
+    def _intersperse(self, token_sequence: List[Optional[int]], blank: Optional[int]) -> List[Optional[int]]:
+        """:meth:`intersperse_blank_char` with *blank* as the value of each blank."""
+        result: List[Optional[int]] = [blank] * (len(token_sequence) * 2 + 1)
         result[1::2] = token_sequence
 
         # Remove starting/ending blank if configured not to be present
@@ -596,10 +674,6 @@ class TTSTokenizer:
             result = result[1:]
         if not self.blank_at_end and result:
             result = result[:-1]
-
-        # Ensure a final blank is present if blank_at_end is True (mimic3 compatibility)
-        if self.blank_at_end and result and result[-1] != blank_id:
-            result.append(blank_id)
 
         return result
 
@@ -617,229 +691,167 @@ class TTSTokenizer:
             blanks at start and end enabled, BOS/EOS wrapping enabled, and word-blank mapping disabled).
         """
         voc: Vocabulary = Vocabulary.from_phoonnx_config(cfg)
-        # Default settings for phoonnx
-        add_blank: bool = True
-        blank_at_end: bool = True
-        blank_at_start: bool = True
-        use_eos_bos: bool = True
-        add_blank_word: bool = False
+        # Native phoonnx configs carry the tokenizer flags explicitly so any
+        # model round-trips faithfully; the historical phoonnx defaults apply
+        # only when a flag is absent.
+        add_blank: bool = cfg.get("add_blank_char", True)
+        blank_at_end: bool = cfg.get("blank_at_end", True)
+        blank_at_start: bool = cfg.get("blank_at_start", True)
+        use_eos_bos: bool = cfg.get("use_eos_bos", True)
+        add_blank_word: bool = cfg.get("add_blank_word", False)
+        fold_compounds: bool = cfg.get("fold_compounds", True)
+        blank_after = cfg.get("blank_after")
+        # F5-TTS gives id 0 to a token that its vocabulary lacks:
+        # list_str_to_idx in src/f5_tts/model/utils.py (SWivid/F5-TTS 600e5fd)
+        # reads vocab_char_map.get(c, 0), and Habibi-TTS and SILMA TTS run the same code.
+        unknown_id: Optional[int] = 0 if cfg.get("engine") == "f5tts" else None
         return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
                             blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
+                            use_eos_bos=use_eos_bos, fold_compounds=fold_compounds,
+                            blank_after=None if blank_after is None else frozenset(blank_after),
+                            unknown_id=unknown_id)
+
+    from_piper_config = _moved_to_compat("TTSTokenizer.from_piper_config", "from_piper_config")
+    from_vosk_config = _moved_to_compat("TTSTokenizer.from_vosk_config", "from_vosk_config")
+    from_mimic3_config = _moved_to_compat("TTSTokenizer.from_mimic3_config", "from_mimic3_config")
+    from_tokens_txt = _moved_to_compat("TTSTokenizer.from_tokens_txt", "from_tokens_txt")
+    from_coqui_config = _moved_to_compat("TTSTokenizer.from_coqui_config", "from_coqui_config")
+
+
+def load_tokenizers_package(tokenizer_json: str):
+    """Read a HuggingFace ``tokenizer.json`` with the ``tokenizers`` package.
+
+    The result encodes and decodes on tokenizers 0.x and 1.x. From 1.0.0rc4
+    a ``Tokenizer`` only holds the configuration, and only the
+    ``CompiledTokenizer`` that ``compile()`` builds can encode. Earlier 1.0
+    release candidates encode with the ``Tokenizer`` and have no
+    ``compile()``, so the test is for the method, not for the version.
+    """
+    from tokenizers import Tokenizer
+    tokenizer = Tokenizer.from_file(str(tokenizer_json))
+    if hasattr(tokenizer, "compile"):
+        return tokenizer.compile()
+    return tokenizer
+
+
+def load_hf_tokenizer(tokenizer_json: str):
+    """Read a HuggingFace ``tokenizer.json`` without a compiled dependency.
+
+    The pure-Python reader in :mod:`phoonnx._bpe` covers the vocabularies the
+    voices ship, so the batteries-included install needs no Rust wheel. A vocab
+    that declares something it does not implement raises
+    :class:`~phoonnx._bpe.UnsupportedTokenizer`; the ``tokenizers`` package then
+    takes over when it is installed, so an exotic vocab degrades instead of
+    failing.
+    """
+    from phoonnx._bpe import Tokenizer as PurePythonTokenizer, UnsupportedTokenizer
+    path = str(tokenizer_json)
+    try:
+        return PurePythonTokenizer.from_file(path)
+    except UnsupportedTokenizer as unsupported:
+        try:
+            import tokenizers  # noqa: F401
+        except ImportError:
+            raise unsupported
+        LOG.debug("%s is beyond the built-in reader (%s); using `tokenizers`",
+                  path, unsupported)
+        return load_tokenizers_package(path)
+
+
+class BPETokenizer:
+    """Subword (BPE) tokenizer — raw text -> subword ids via a HuggingFace ``tokenizer.json``.
+
+    The complement to the vocab-lookup :class:`TTSTokenizer`: where that maps phoneme/
+    char strings to ids one-to-one, this BPE-encodes raw text into subword ids — for
+    text-token models like Chatterbox. It satisfies the same call the voice uses
+    (``tokenize(units) -> ids``), so it slots in as the voice's tokenizer. Pair it with
+    the ``UNICODE`` phonemizer, which passes text through as characters; joining those
+    characters reconstructs the text for BPE encoding. No blank/BOS/EOS insertion — the
+    BPE model owns spacing and special tokens.
+    """
+
+    def __init__(self, tokenizer_json: str):
+        self._tok = load_hf_tokenizer(tokenizer_json)
+
+    # vocab-lookup token roles do not apply to subword tokenization
+    pad_id = None
+    blank_id = None
+    blank_word_id = None
+
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None,
+                 lang_tokens: Optional[Dict[str, str]] = None) -> List[int]:
+        # base BPE has no notion of language; the params exist so the voice can call
+        # tokenize(text, language=..., lang_tokens=...) uniformly (the MTL subclass uses them).
+        if isinstance(text, (list, tuple)):
+            text = "".join(text)
+        return list(self._tok.encode(text).ids)
+
+    def encode(self, text: Union[str, List[str]]) -> List[int]:
+        return self.tokenize(text)
+
+    def decode(self, ids: List[int], skip_special_tokens: bool = True) -> str:
+        """Subword ids back to text — the inverse of :meth:`tokenize`.
+
+        Text-token models hand back the ids of the text they read, and the
+        engine needs the string again to align it with the audio.
+        """
+        return self._tok.decode([int(i) for i in ids],
+                                skip_special_tokens=skip_special_tokens)
+
+
+class ChatterboxMTLTokenizer(BPETokenizer):
+    """Multilingual Chatterbox tokenizer — the language-aware front end on top of the BPE.
+
+    The multilingual model is trained on a specific text encoding: lowercase +
+    NFKD-normalise, an optional per-language script transform, a ``[<lang>]`` prefix
+    token, and spaces encoded as a ``[SPACE]`` token. ``language`` is an ISO code (e.g.
+    ``"pt"``); without it — or for a vocab lacking the ``[<lang>]`` token — this degrades
+    to plain BPE so it stays safe for English-only checkpoints.
+    """
+
+    def tokenize(self, text: Union[str, List[str]], language: Optional[str] = None,
+                 lang_tokens: Optional[Dict[str, str]] = None) -> List[int]:
+        if isinstance(text, (list, tuple)):
+            text = "".join(text)
+        lang = (language or "").replace("_", "-").split("-")[0].lower()
+        # An explicit ``lang_tokens`` map (BCP47/code -> token string) wins and is prepended
+        # **literally**, even when the token isn't a single vocab id (it BPE-splits). A dialect
+        # model can reuse another language's token: lahgtna reads Egyptian Arabic under ``[ms]``.
+        # Otherwise derive ``[<lang>]`` and require it in the vocab (the standard variants).
+        token = None
+        if lang_tokens:
+            token = lang_tokens.get(language) or lang_tokens.get(lang)
+        if token is None and lang and self._tok.token_to_id(f"[{lang}]") is not None:
+            token = lang
+        if not token:
+            return list(self._tok.encode(text).ids)
+        import unicodedata
+        # The transform follows the language of the text, not a reused token
+        norm = self._script_transform(unicodedata.normalize("NFKD", text.lower()), lang)
+        encoded = f"[{token}]{norm}".replace(" ", "[SPACE]")
+        return list(self._tok.encode(encoded).ids)
 
     @staticmethod
-    def from_piper_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer configured from a Piper configuration.
-        
-        Parameters:
-            cfg (Dict[str, Any]): Piper configuration dictionary containing phoneme/token mappings and optional special token names.
-        
-        Returns:
-            TTSTokenizer: Tokenizer configured with the Vocabulary derived from `cfg` and Piper-oriented defaults for blank and BOS/EOS handling.
-        """
-        voc: Vocabulary = Vocabulary.from_piper_config(cfg)
-        # Default settings for Piper
-        add_blank: bool = True
-        blank_at_end: bool = True
-        blank_at_start: bool = True
-        use_eos_bos: bool = True
-        add_blank_word: bool = False
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
-
-    @staticmethod
-    def from_mimic3_config(cfg: Dict[str, Any], tokens_txt: str) -> 'TTSTokenizer':
-        """
-        Factory method to create a TTSTokenizer from a Mimic3 configuration and tokens file.
-
-        Parameters:
-            cfg: The Mimic3 configuration dictionary.
-            tokens_txt: The content of the tokens.txt file.
-
-        Returns:
-            A configured TTSTokenizer instance.
-        """
-        voc: Vocabulary = Vocabulary.from_mimic3_config(cfg, tokens_txt)
-        phonemes_cfg: Dict[str, Any] = cfg.get("phonemes", {})
-        blank_between: str = phonemes_cfg.get("blank_between", BlankBetween.TOKENS_AND_WORDS)
-        blank_at_end: bool = phonemes_cfg.get("blank_at_end", True)
-        blank_at_start: bool = phonemes_cfg.get("blank_at_start", True)
-        use_eos_bos: bool = phonemes_cfg.get("auto_bos_eos", True)
-
-        add_blank: bool = blank_between != BlankBetween.WORDS  # intersperse blank char
-        add_blank_word: bool = blank_between != BlankBetween.TOKENS
-
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
-
-    @staticmethod
-    def from_tokens_txt(tokens_txt: str, id_first=False) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer from the contents of a tokens.txt file using conservative defaults.
-        
-        Parameters:
-            tokens_txt (str): Contents of a tokens.txt file that maps token strings to IDs.
-        
-        Returns:
-            TTSTokenizer: A tokenizer built from the parsed vocabulary configured with
-            add_blank_char=True, add_blank_word=True, blank_at_end=True, blank_at_start=True,
-            and use_eos_bos=True.
-        """
-        voc: Vocabulary = Vocabulary.from_tokens_txt(tokens_txt, id_first)
-        add_blank_word: bool = False
-        add_blank: bool = True
-        blank_at_end: bool = True
-        blank_at_start: bool = True
-        use_eos_bos: bool = False
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
-
-    @staticmethod
-    def from_coqui_config(cfg: Dict[str, Any]) -> 'TTSTokenizer':
-        """
-        Create a TTSTokenizer configured from a Coqui TTS configuration.
-        
-        Interprets the following Coqui config keys:
-        - "add_blank": enable inter-character blank insertion and control blank placement at start/end.
-        - "enable_eos_bos_chars": enable wrapping token sequences with BOS/EOS.
-        This factory does not enable word-level blank mapping (blank_word is False).
-        
-        Parameters:
-            cfg (Dict[str, Any]): Coqui configuration dictionary.
-        
-        Returns:
-            TTSTokenizer: Tokenizer instance configured according to the provided Coqui config.
-        """
-        voc: Vocabulary = Vocabulary.from_coqui_config(cfg)
-        add_blank_word: bool = False
-        # Coqui typically controls blank insertion via 'add_blank' flag
-        add_blank: bool = cfg.get("add_blank", False)
-        blank_at_end: bool = cfg.get("add_blank", False)
-        blank_at_start: bool = cfg.get("add_blank", False)
-        use_eos_bos: bool = cfg.get("enable_eos_bos_chars", False)
-        return TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                            blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                            use_eos_bos=use_eos_bos)
+    def _script_transform(text: str, lang: str) -> str:
+        """Apply the per-language script transform (Hangul→Jamo, kanji→hiragana, Cangjie,
+        niqqud, Russian stress). Korean is pure Python; the others need optional deps and
+        fall back to raw text (with a warning) when missing. Languages without an entry
+        need no transform."""
+        from phoonnx.lang_preprocess import SCRIPT_TRANSFORMS
+        fn = SCRIPT_TRANSFORMS.get(lang)
+        return fn(text) if fn else text
 
 
-if __name__ == "__main__":
-    import json
+def load_chatterbox_tokenizer(tokenizer_json: str) -> BPETokenizer:
+    """Build the right Chatterbox tokenizer from a ``tokenizer.json``.
 
+    The multilingual checkpoint's vocab carries a ``[SPACE]`` token (its language front
+    end); base/turbo don't. So a ``[SPACE]`` token selects ``ChatterboxMTLTokenizer``,
+    otherwise a plain ``BPETokenizer``. The raw tokenizer is loaded once and shared.
+    """
+    raw = load_hf_tokenizer(tokenizer_json)
+    cls = ChatterboxMTLTokenizer if raw.token_to_id("[SPACE]") is not None else BPETokenizer
+    tok = cls.__new__(cls)
+    tok._tok = raw
+    return tok
 
-    def _test_mimic3_compat(phone_str: str, cfg_path: str, tokens_path: str) -> None:
-        """
-        Run compatibility checks against Mimic3's phonemes2ids and print tokenization comparisons.
-        
-        Builds a Vocabulary from the provided Mimic3 config and tokens file, then for multiple combinations of blank placement and BOS/EOS usage constructs a TTSTokenizer and prints both the tokenizer's output and the result of Mimic3's phonemes2ids for comparison. Outputs are printed to stdout.
-        
-        Parameters:
-            phone_str (str): Space-separated phoneme string to test (words separated by spaces).
-            cfg_path (str): Path to the Mimic3 JSON configuration file.
-            tokens_path (str): Path to the Mimic3 tokens.txt content file.
-        """
-        print("\n## Testing mimic3 compat")
-        # test original mimic3 code
-        from phonemes2ids import phonemes2ids as mimic3_phonemes2ids
-
-        with open(cfg_path, "r") as f:
-            cfg = json.load(f)
-            with open(tokens_path, "r") as f2:
-                toks = f2.read()
-            voc = Vocabulary.from_mimic3_config(cfg, toks)
-
-        phone_words = [list(w) for w in
-                       phone_str.split()]  # [['h', 'ə', 'l', 'ˈ', 'o', 'ʊ'], ['w', 'ˈ', 'ɜ', 'ː', 'l', 'd']]
-
-        for blank_between in [BlankBetween.WORDS, BlankBetween.TOKENS, BlankBetween.TOKENS_AND_WORDS]:
-            for blank_at_end in [True, False]:
-                for blank_at_start in [True, False]:
-                    for use_eos_bos in [True, False]:
-                        add_blank = True
-                        add_blank_word = True
-                        if blank_between == BlankBetween.WORDS:
-                            add_blank = False
-                        elif blank_between == BlankBetween.TOKENS:
-                            add_blank_word = False
-                        print(
-                            f"# blank_at_start={blank_at_start}, blank_at_end={blank_at_end}, add_blank={add_blank}, add_blank_word={add_blank_word}, use_eos_bos={use_eos_bos}")
-                        tok = TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                                           blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                                           use_eos_bos=use_eos_bos)
-                        print(tok.tokenize(phone_str))
-                        print(mimic3_phonemes2ids(phone_words, tok.vocabulary.char2idx, pad=tok.vocabulary.pad,
-                                                  bos=tok.vocabulary.bos, eos=tok.vocabulary.eos,
-                                                  blank=tok.vocabulary.blank,
-                                                  blank_word=tok.vocabulary.blank_word, blank_at_end=blank_at_end,
-                                                  blank_at_start=blank_at_start, blank_between=blank_between,
-                                                  auto_bos_eos=use_eos_bos))
-
-
-    def _test_piper_compat(phone_str: str, cfg_path: str):
-        print("\n## Testing piper compat")
-        from piper_phonemize import phoneme_ids_espeak
-        phones = list(phone_str)  # ['h', 'ə', 'l', 'ˈ', 'o', 'ʊ', ' ', 'w', 'ˈ', 'ɜ', 'ː', 'l', 'd']
-        with open(cfg_path, "r") as f:
-            cfg = json.load(f)
-            voc = Vocabulary.from_piper_config(cfg)
-
-        add_blank = blank_at_end = blank_at_start = use_eos_bos = True
-        add_blank_word = False
-        tok = TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                           blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                           use_eos_bos=use_eos_bos)
-        print(
-            f"# blank_at_start={blank_at_start}, blank_at_end={blank_at_end}, add_blank={add_blank}, add_blank_word={add_blank_word}, use_eos_bos={use_eos_bos}")
-        print(tok.tokenize(phone_str))
-        print(phoneme_ids_espeak(phones))
-
-
-    def _test_coqui_compat(phone_str: str, cfg_path: str):
-        print("\n## Testing coqui compat")
-
-        from TTS.tts.configs.vits_config import VitsConfig
-        from TTS.tts.models.vits import Vits
-
-        config = VitsConfig()
-        config.load_json(cfg_path)
-        vits = Vits.init_from_config(config)
-
-        with open(cfg_path, "r") as f:
-            cfg = json.load(f)
-            voc = Vocabulary.from_coqui_config(cfg)
-            add_blank = blank_at_end = blank_at_start = cfg.get("add_blank")
-            use_eos_bos = cfg.get("enable_eos_bos_chars")
-
-        add_blank_word = False
-        tok = TTSTokenizer(voc, add_blank_char=add_blank, add_blank_word=add_blank_word,
-                           blank_at_end=blank_at_end, blank_at_start=blank_at_start,
-                           use_eos_bos=use_eos_bos)
-        print(
-            f"# blank_at_start={blank_at_start}, blank_at_end={blank_at_end}, add_blank={add_blank}, add_blank_word={add_blank_word}, use_eos_bos={use_eos_bos}")
-        print(tok.tokenize(phone_str))
-        print(vits.tokenizer.text_to_ids(phone_str, language=None))
-        print(vits.tokenizer.characters.vocab)
-
-
-    phone_str = "həlˈoʊ wˈɜːld"
-
-    piper = "/home/miro/Transferências/miro_eu-ES.piper.json"
-    _test_piper_compat(phone_str, piper)
-
-    mimic3 = "/home/miro/Transferências/config.json"
-    tokens_txt = "/home/miro/Transferências/phonemes.txt"
-    _test_mimic3_compat(phone_str, mimic3, tokens_txt)
-
-    # graphemes
-    for v in ["celtia", "brais"]:
-        text = "redes neuronais artificiais"
-        coqui = f"/home/miro/.cache/phoonnx/voices/proxectonos/{v}/model.json"
-        _test_coqui_compat(text, coqui)
-    # cotovia
-    for v in ["sabela", "iago", "icia", "paulo"]:
-        phone_coto = "rreDes newronajs artifiTjajs"
-        coqui = f"/home/miro/.cache/phoonnx/voices/proxectonos/{v}/model.json"
-        _test_coqui_compat(phone_coto, coqui)

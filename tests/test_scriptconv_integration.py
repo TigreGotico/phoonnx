@@ -1,0 +1,325 @@
+"""
+Integration tests for the scriptconv delegation layer.
+
+Covers:
+- ARPABET → IPA via scriptconv.notation (arpa_to_ipa / arpa_to_ipa_lookup)
+- Buckwalter ↔ Arabic script via scriptconv.notation (used inside the Mantoq pipeline)
+- normalize_lang MMS script-tag cases (crk-script_syllabics, cmo-khmer-script)
+"""
+import pytest
+from scriptconv.phonemizers.base import BasePhonemizer
+from phoonnx.config import AudioPost
+
+
+
+# ---------------------------------------------------------------------------
+# ARPABET → IPA
+# ---------------------------------------------------------------------------
+
+def test_arpa_to_ipa_basic_phonemes():
+    from scriptconv.notation import arpa_to_ipa
+    assert arpa_to_ipa("B") == "b"
+    assert arpa_to_ipa("IY1") == "i"
+    assert arpa_to_ipa("AH0") == "ə"
+
+
+def test_arpa_to_ipa_function():
+    """arpa_to_ipa should produce a non-empty IPA string for a sample word."""
+    from scriptconv.notation import arpa_to_ipa
+    result = arpa_to_ipa("B IY1 T")
+    assert isinstance(result, str)
+    assert len(result) > 0
+    assert "b" in result
+    assert "i" in result
+
+
+def test_arpa_to_ipa_stress_digits_stripped():
+    """Stress-digit variants (AH0, AH1) map to different IPA vowels."""
+    from scriptconv.notation import arpa_to_ipa
+    assert arpa_to_ipa("AH0") == "ə"
+    assert arpa_to_ipa("AH1") == "ʌ"
+
+
+def test_en_phonemizer_uses_arpa_lookup():
+    """
+    G2PEnPhonemizer imports arpa_to_ipa_lookup directly — ensure the import
+    still resolves after the scriptconv delegation.
+    """
+    from scriptconv.phonemizers.en import G2PEnPhonemizer  # noqa: F401 — import-only check
+
+
+# ---------------------------------------------------------------------------
+# Buckwalter ↔ Arabic script (via Mantoq pipeline)
+# ---------------------------------------------------------------------------
+
+def test_arabic_to_buckwalter_roundtrip():
+    """arabic_to_buckwalter → buckwalter_to_arabic should recover the original."""
+    from scriptconv.notation import arabic_to_buckwalter, buckwalter_to_arabic
+    samples = ["مرحبا", "الشمس", "بيت", "كتاب"]
+    for word in samples:
+        bw = arabic_to_buckwalter(word)
+        recovered = buckwalter_to_arabic(bw)
+        assert recovered == word, f"Roundtrip failed for {word!r}: got {recovered!r}"
+
+
+def test_arabic_to_buckwalter_known_values():
+    from scriptconv.notation import arabic_to_buckwalter
+    assert arabic_to_buckwalter("مرحبا") == "mrHbA"
+    assert arabic_to_buckwalter("الشمس") == "Al$ms"
+
+
+def test_mantoq_phonemizer_arabic_ipa_smoke():
+    """MantoqPhonemizer with IPA alphabet should produce a non-empty string."""
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
+    from phoonnx.config import Alphabet
+    p = MantoqPhonemizer(alphabet=Alphabet.IPA)
+    result = p.phonemize_string("مرحبا", lang="ar")
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# normalize_lang MMS script-tag cases
+# ---------------------------------------------------------------------------
+
+def test_normalize_lang_mms_syllabics():
+    """crk-script_syllabics should resolve to a BCP-47 tag with Cans script."""
+    from phoonnx.util import normalize_lang
+    result = normalize_lang("crk-script_syllabics")
+    assert "Cans" in result, f"Expected 'Cans' in {result!r}"
+
+
+def test_normalize_lang_mms_khmer():
+    """cmo-khmer-script should resolve to a BCP-47 tag with Khmr script."""
+    from phoonnx.util import normalize_lang
+    result = normalize_lang("cmo-khmer-script")
+    assert "Khmr" in result, f"Expected 'Khmr' in {result!r}"
+
+
+def test_normalize_lang_plain_lang_unchanged():
+    """A plain language code should still pass through normalize_lang."""
+    from phoonnx.util import normalize_lang
+    result = normalize_lang("en")
+    assert result.startswith("en")
+
+
+def test_normalize_lang_mms_arabic_script():
+    """MMS 'arabic' script word should yield Arab subtag."""
+    from phoonnx.util import normalize_lang
+    result = normalize_lang("arb-script_arabic")
+    assert "Arab" in result, f"Expected 'Arab' in {result!r}"
+
+
+def test_phoneme_type_is_scriptconv_phonemizer_enum():
+    """Enum identity across the boundary: values stored in voice configs must
+    resolve to the same class in phoonnx and scriptconv."""
+    from phoonnx.config import Alphabet, PhonemeType
+    from scriptconv.phonemizers.enums import Alphabet as ScAlphabet
+    from scriptconv.phonemizers.enums import Phonemizer
+    assert PhonemeType is Phonemizer
+    assert Alphabet is ScAlphabet
+
+
+def test_get_phonemizer_injects_normalizer():
+    import text2spoken
+    from phoonnx.config import PhonemeType, get_phonemizer
+    with pytest.warns(DeprecationWarning, match="get_phonemizer"):
+        p = get_phonemizer(PhonemeType.GRAPHEMES)
+    assert p.normalizer is text2spoken.normalize
+    out = "".join(p.phonemize("2 cats", "en")[0])
+    assert "2" not in out
+
+
+def test_licensed_backends_construct_from_scriptconv_quarantine():
+    from phoonnx.config import PhonemeType, get_phonemizer
+    from scriptconv_nonfree.phonemizers.ar import MantoqPhonemizer
+    m = get_phonemizer(PhonemeType.MANTOQ)
+    assert isinstance(m, MantoqPhonemizer)
+    assert type(m).__module__ == "scriptconv_nonfree.phonemizers.ar"
+
+
+# ---------------------------------------------------------------------------
+# Per-language phonemizer modules re-export the shared contract types
+# ---------------------------------------------------------------------------
+
+# fa, gl and ko hold only copyleft wrappers and vi only a non-commercial one,
+# so those modules are in scriptconv-copyleft and scriptconv-nonfree.
+_PHONEMIZER_MODULES = [
+    *(f"scriptconv.phonemizers.{name}" for name in (
+        "ar", "en", "eu", "he", "ja", "mwl", "o2ipa", "pt", "zh", "shami")),
+    *(f"scriptconv_copyleft.phonemizers.{name}" for name in (
+        "eu", "fa", "gl", "ja", "ko", "mul")),
+    *(f"scriptconv_nonfree.phonemizers.{name}" for name in ("ar", "vi")),
+]
+
+
+@pytest.mark.parametrize("module_name", _PHONEMIZER_MODULES)
+def test_shim_reexports_alphabet_and_base_phonemizer(module_name):
+    """Every per-language phonemizer module carries the shared contract types
+    (Alphabet, BasePhonemizer) alongside its language-specific classes."""
+    import importlib
+    mod = importlib.import_module(module_name)
+    from scriptconv.phonemizers.enums import Alphabet
+    from scriptconv.phonemizers.base import BasePhonemizer
+    assert mod.Alphabet is Alphabet
+    assert mod.BasePhonemizer is BasePhonemizer
+
+
+def test_diacritization_delegates_to_scriptconv():
+    """phoonnx no longer owns any diacritizer: the diacritization path routes
+    straight to ``scriptconv.diacritics.diacritize``. Arabic routes to
+    scriptconv's tashkeel backend; an unknown language passes through
+    unchanged. The heavy text2tashkeel backend is faked so routing is asserted
+    without requiring the optional dependency in the test environment."""
+    from unittest.mock import patch, MagicMock
+    import scriptconv.diacritics as scd
+
+    fake_backend = MagicMock()
+    fake_backend.diacritize.return_value = "ARABIC+DIACRITICS"
+    with patch.object(scd, "_tashkeel", return_value=fake_backend) as mk:
+        assert scd.diacritize("ذهب محمد", "ar") == "ARABIC+DIACRITICS"
+        mk.assert_called_once()  # 'ar' routed to scriptconv's tashkeel backend
+    # unknown language needs no backend and must pass through unchanged
+    assert scd.diacritize("hello world", "und") == "hello world"
+
+
+class _RecordingPhonemizer(BasePhonemizer):
+    def __init__(self):
+        super().__init__()
+        self.seen = []
+
+    def phonemize_string(self, text, lang):
+        self.seen.append(text)
+        return text
+
+
+def _diacritizing_voice(lang, model):
+    import types
+    from unittest.mock import MagicMock
+    import numpy as np
+    from phoonnx.voice import TTSVoice
+    from phoonnx.config import Alphabet, PhonemeType
+
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.phonetic_spellings = None
+    voice.phonemizer = _RecordingPhonemizer()
+    voice.config = types.SimpleNamespace(text_casing="ignore", phoneme_type=PhonemeType.UNICODE,
+                                         alphabet=Alphabet.IPA, lang_code=lang, phonemizer_lang=None,
+                                         add_diacritics=True, diacritizer_model=model,
+                                         sample_rate=22050)
+    voice.adapter = MagicMock()
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: [1] * len(p))
+    voice._infer = lambda ids, syn_config, include_alignments=False, streams=None, text=None: (np.zeros(4, dtype=np.float32), None)
+    return voice
+
+
+def test_voice_diacritization_delegates_to_scriptconv():
+    """phoonnx owns no diacritizer: a grapheme voice with add_diacritics=True
+    sends its text through scriptconv's diacritizer before phonemization.
+    Asserted with a fake tashkeel backend — no model needed."""
+    from unittest.mock import patch
+    import scriptconv.diacritics as scd
+    from phoonnx.config import Alphabet, SynthesisConfig
+
+    voice = _diacritizing_voice("ar", "rawi-ensemble")
+    seen = {}
+
+    class _Tashkeel:
+        def diacritize(self, text):
+            seen["text"] = text
+            return text + "َ"
+
+    def tashkeel(model=None, waqf=False):
+        seen["model"] = model
+        return _Tashkeel()
+
+    with patch.object(scd, "_tashkeel", tashkeel):
+        list(voice.synthesize("نص", SynthesisConfig(input_alphabet=Alphabet.GRAPHEMES, audio=AudioPost(normalize=False))))
+    assert seen == {"text": "نص", "model": "rawi-ensemble"}
+    assert voice.phonemizer.seen == ["نصَ"]
+
+
+def test_en_module_reexports_arpa_to_ipa_lookup():
+    from scriptconv.phonemizers import en
+    from scriptconv.phonemizers.en import arpa_to_ipa_lookup
+    assert en.arpa_to_ipa_lookup is arpa_to_ipa_lookup
+
+
+def test_shami_module_reexports_frontend_helpers():
+    from scriptconv.phonemizers import shami
+    from scriptconv.phonemizers.shami import TextFrontend, sentence_tokenize
+    from scriptconv.phonemizers.base import PhonemizedChunks
+    assert shami.TextFrontend is TextFrontend
+    assert shami.PhonemizedChunks is PhonemizedChunks
+    assert shami.sentence_tokenize is sentence_tokenize
+
+
+def _phonemic_voice(model_alphabet):
+    """Minimal voice for the already-phonemic dispatch."""
+    import types
+    from unittest.mock import MagicMock
+    from phoonnx.voice import TTSVoice
+    from phoonnx.config import Alphabet, PhonemeType
+    from scriptconv.phonemizers.base import GraphemePhonemizer
+    voice = TTSVoice.__new__(TTSVoice)
+    voice.phonemizer = GraphemePhonemizer()
+    voice.phonetic_spellings = None
+    voice.adapter = MagicMock()
+    voice.config = types.SimpleNamespace(text_casing="ignore", lang_code="en", phonemizer_lang=None, alphabet=model_alphabet,
+                                         phoneme_type=PhonemeType.UNICODE,
+                                         add_diacritics=False, diacritizer_model=None)
+    voice.config.tokenizer = types.SimpleNamespace(tokenize=lambda p: list(range(len(p))))
+    return voice
+
+
+def test_phonemic_input_transcodes_to_model_alphabet_via_scriptconv():
+    """Already-phonemic input in a foreign notation is transcoded to the model's
+    alphabet through scriptconv's graph, and an ARPA-vocab model receives WHOLE
+    symbols (whitespace-tokenised), not characters. Replaces the coverage lost
+    with the deleted phoonnx-side conversion module."""
+    from phoonnx.config import Alphabet, SynthesisConfig
+    voice = _phonemic_voice(Alphabet.ARPA)
+    out = list(voice.prepare("S@", SynthesisConfig(input_alphabet=Alphabet.XSAMPA)))
+    assert [list(utterance.symbols) for utterance in out] == [["SH", "AX"]]
+
+
+def test_phonemic_input_same_alphabet_passes_through_unchanged():
+    """src == tgt is a no-op route: the text reaches _phonemic_chunks untouched."""
+    from phoonnx.config import Alphabet, SynthesisConfig
+    voice = _phonemic_voice(Alphabet.ARPA)
+    out = list(voice.prepare("SH AX", SynthesisConfig(input_alphabet=Alphabet.ARPA)))
+    assert [list(utterance.symbols) for utterance in out] == [["SH", "AX"]]
+
+
+def test_unroutable_phonemic_pair_passes_text_through():
+    """When scriptconv has no path between the two notations the input is passed
+    through unchanged rather than raising (best-effort, matching the old BFS)."""
+    from phoonnx.config import Alphabet, SynthesisConfig
+    voice = _phonemic_voice(Alphabet.ARPA)
+    out = list(voice.prepare("abc", SynthesisConfig(input_alphabet=Alphabet.HANGUL)))
+    assert [list(utterance.symbols) for utterance in out] == [["abc"]]
+
+
+def test_hebrew_diacritizer_model_carries_the_phonikud_path():
+    """The single diacritizer_model knob is overloaded per language: for Hebrew it
+    is the phonikud ONNX path. Assert a voice's value reaches scriptconv's
+    diacritizer for he (spy — no model download)."""
+    from unittest.mock import patch
+    import scriptconv.diacritics as scd
+    from phoonnx.config import Alphabet, SynthesisConfig
+
+    voice = _diacritizing_voice("he", "/models/phonikud.onnx")
+    seen = {}
+
+    class _Phonikud:
+        def add_diacritics(self, text):
+            seen["text"] = text
+            return text
+
+    def phonikud(model=None):
+        seen["model"] = model
+        return _Phonikud()
+
+    with patch.object(scd, "_phonikud", phonikud):
+        list(voice.synthesize("שלום", SynthesisConfig(input_alphabet=Alphabet.GRAPHEMES, audio=AudioPost(normalize=False))))
+    assert seen == {"text": "שלום", "model": "/models/phonikud.onnx"}

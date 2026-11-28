@@ -1,0 +1,8 @@
+# Audio8 multilingual test sentences, tagged with the language the WER gate should score.
+en|The quick brown fox jumps over the lazy dog.
+fr|Le soleil brille sur la vieille ville ce matin.
+de|Der Zug nach Berlin fährt in zehn Minuten ab.
+es|La biblioteca abre todos los días por la mañana.
+it|Domani andremo al mercato a comprare del pane.
+nl|De trein naar Amsterdam vertrekt over tien minuten.
+pl|Pociąg do Warszawy odjeżdża za dziesięć minut.

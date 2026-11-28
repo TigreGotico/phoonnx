@@ -1,0 +1,41 @@
+{
+    "hf_community/mush42/optispeech-lightspeech-en-us-emily": {
+        "voice_id": "hf_community/mush42/optispeech-lightspeech-en-us-emily",
+        "model_url": "https://huggingface.co/Phoonnx/optispeech-en_us-lightspeech_emily-espeak/resolve/6ece5e7116c1a99d06e8db22c40960de8fcfe76e/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/optispeech-en_us-lightspeech_emily-espeak/resolve/6ece5e7116c1a99d06e8db22c40960de8fcfe76e/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "optispeech",
+        "lang": "en-US"
+    },
+    "hf_community/mush42/optispeech-lightspeech-en-us-mike": {
+        "voice_id": "hf_community/mush42/optispeech-lightspeech-en-us-mike",
+        "model_url": "https://huggingface.co/Phoonnx/optispeech-en_us-lightspeech_mike-espeak/resolve/966146767f7f16bd7d0649281c0d954fa3000645/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/optispeech-en_us-lightspeech_mike-espeak/resolve/966146767f7f16bd7d0649281c0d954fa3000645/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "optispeech",
+        "lang": "en-US"
+    },
+    "hf_community/mush42/optispeech-convnext-en-us-emily": {
+        "voice_id": "hf_community/mush42/optispeech-convnext-en-us-emily",
+        "model_url": "https://huggingface.co/Phoonnx/optispeech-en_us-convnext_emily-espeak/resolve/ef453a6a81ae477d08393596f8a7650457b8c428/model.onnx",
+        "config_url": "https://huggingface.co/Phoonnx/optispeech-en_us-convnext_emily-espeak/resolve/ef453a6a81ae477d08393596f8a7650457b8c428/config.json",
+        "vocab_url": null,
+        "tokenizer_config_url": null,
+        "tokens_url": null,
+        "phoneme_map_url": null,
+        "phoneme_type": "espeak",
+        "alphabet": "ipa",
+        "engine": "optispeech",
+        "lang": "en-US"
+    }
+}
