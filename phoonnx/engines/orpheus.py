@@ -141,6 +141,7 @@ def _sample(scores: np.ndarray, temperature: float, top_p: float,
 
 class OrpheusAdapter(BaseOnnxAdapter):
     """Adapter for the Orpheus family (Llama codec-LM + SNAC 24 kHz decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     SPEAKER_NAMES = True
 

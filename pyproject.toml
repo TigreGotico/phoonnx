@@ -25,12 +25,12 @@ dependencies = [
     "linguatag>=0.4.1a1",
     # >=0.0.2a107: a group of digits joined by spaces reads as one number or stays
     # as written, and a pt word after a number takes the number's gender
-    "text2spoken>=0.0.2a107",
+    "text2spoken>=0.0.2a175",
     "ovos-number-parser>=0.24.44a1",
     "ovos-date-parser>=0.6.4a1",
-    # >=0.0.4a161: Alphabet.MISAKI, which the config schema lists. Every
+    # >=0.0.4a185: Shami normalises each script run (#344), an Arabic run as apc (#491); every backend has get_lang (#486). Every
     # scriptconv extra in this file relies on this floor.
-    "scriptconv[phonemizers]>=0.0.4a161",
+    "scriptconv[phonemizers]>=0.0.4a185",
     # the f5tts_pinyin text function segments with rjieba and reads hanzi with pypinyin
     "rjieba>=0.2.2",
     "pypinyin>=0.50",
@@ -71,14 +71,12 @@ test = [
     "pytorch-lightning>=2.0",
     "ovos-plugin-manager>=2.2.0",
     "pycotovia>=0.4.0a1",
-    # MOSS-TTS-Nano ships a SentencePiece text tokenizer
-    "sentencepiece",
     "ahotts-g2p>=0.1.0",
     # scriptconv-copyleft holds the eSpeak, Cotovia, AhoTTS and misaki wrappers,
     # and scriptconv-nonfree the mantoq, Halabi and Iqra wrappers. espyak,
     # pycotovia and ahotts-g2p stay listed for their floors. pt-phonemizers gives
     # tugaphone, a backend that owns its diacritize stage, for the card tests.
-    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a161",
+    "scriptconv[espeak,gl,eu,ar-phonemizers,pt-phonemizers]>=0.0.4a185",
     # >=0.2.1a1: mantoq reads a very long digit run digit by digit, not as one int
     "scriptconv-nonfree>=0.2.1a1",
     # >=0.3.1a1: the eSpeak wrapper gives espeak-ng the text on stdin, so a line
@@ -86,8 +84,8 @@ test = [
     "scriptconv-copyleft>=0.3.1a1",
     # the model card tests render the text stack that the cards recommend, from
     # these libraries' own language list, call names and default model
-    "text2spoken>=0.0.2a107",
-    "bifonia>=0.5.0",
+    "text2spoken>=0.0.2a175",
+    "bifonia>=0.7.0a1",
     "text2tashkeel>=0.3.1a3",
     "espyak>=0.0.3a1",
     # the voice-conversion end-to-end test runs the real engine (pure ONNX)
@@ -116,9 +114,6 @@ test = [
     # the reference for tests/test_bpe_reader.py: phoonnx/_bpe.py must give
     # the same ids, because a wrong id makes wrong audio and no error
     "tokenizers",
-    # the reference for tests/test_sentencepiece_reader.py: phoonnx/_sentencepiece.py
-    # must give the same ids
-    "sentencepiece",
     # onnx needs ml_dtypes.float4_e2m1fn (ml_dtypes 0.5), and ml_dtypes 0.5
     # needs numpy>=2.1 on Python 3.13+, so the split follows the [train] numpy markers
     "onnx<1.18; python_version<'3.13'",
@@ -131,23 +126,18 @@ test = [
     # fallback taken when pydub cannot import its audioop module
     "pydub",
     "audioop-lts; python_version >= '3.13'",
-    # the Pocket TTS card example test runs the engine's adapter, which reads the
-    # voice state with safetensors
-    "safetensors",
 ]
 # splits a monolithic VITS model into a streaming encoder and decoder at load;
 # a pre-split ("+RT") voice streams without it
 streaming = ["onnx"]
 # The eSpeak wrapper is in scriptconv-copyleft (GPL), so an eSpeak voice needs
 # this extra even when the espeak-ng binary is installed.
-espeak = ["scriptconv[espeak]>=0.0.4a161", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+espeak = ["scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 matcha = [
     "scipy",
 ]
-# Pocket TTS reads its voice states with safetensors
-pockettts = [
-    "safetensors",
-]
+# Pocket TTS needs nothing extra; phoonnx/_safetensors.py reads its voice states
+pockettts = []
 # OmniVoice trims silence with pydub; without it a numpy RMS trim runs.
 # pydub imports audioop, which Python 3.13 removed and audioop-lts restores.
 omnivoice = ["pydub", "audioop-lts; python_version >= '3.13'"]
@@ -238,8 +228,6 @@ train-fastpitch = []
 train-mixer = []
 # MOSS-TTS-Nano training (phoonnx_train/mosstts/), on top of [train]
 train-mosstts = [
-    "sentencepiece",
-    "safetensors",
     "soundfile",
     "onnx",
 ]
@@ -259,30 +247,30 @@ train-pyworld = [
 ]
 # scriptconv[ar-phonemizers] installs arbtok and scriptconv-nonfree, which holds
 # the mantoq, Halabi and Iqra wrappers (CC BY-NC 4.0).
-ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a161", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
+ar = ["epitran", "scriptconv[ar-phonemizers]>=0.0.4a185", "scriptconv-nonfree>=0.2.1a1", "arbtok>=0.0.3a2", "text2tashkeel>=0.3.1a3", "gruut[ar]>=2.3.0"]
 ca = ["epitran", "gruut[ca]>=2.3.0"]
-gl = ["scriptconv[gl]>=0.0.4a161", "pycotovia>=0.4.0a1", "epitran"]
+gl = ["scriptconv[gl]>=0.0.4a185", "pycotovia>=0.4.0a1", "epitran"]
 cs = ["epitran", "gruut[cs]>=2.3.0"]
-de = ["epitran", "gruut[de]>=2.3.0"]
+de = ["epitran", "gruut[de]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 # scriptconv-copyleft holds the misaki wrappers. The scriptconv[misaki] extra
 # would also install the Japanese, Korean and Chinese misaki engines.
 # spacy<4.0 in the en, ja, vi and zh extras: see the spacy comment in the test extra.
 en = ["epitran", "gruut[en]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[en]", "spacy>=3.7,<4.0"]
-es = ["epitran", "gruut[es]>=2.3.0"]
-eu = ["scriptconv[eu]>=0.0.4a161", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
-fa = ["epitran", "scriptconv[fa]>=0.0.4a161"]
-fr = ["epitran", "gruut[fr]>=2.3.0"]
-he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a161"]
-it = ["epitran", "gruut[it]>=2.3.0"]
-ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a161", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
-ko = ["epitran", "scriptconv[ko]>=0.0.4a161", "g2pk", "misaki[ko]"]
+es = ["epitran", "gruut[es]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+eu = ["scriptconv[eu]>=0.0.4a185", "ahotts-g2p>=0.1.0", "euskaphone", "epitran"]
+fa = ["epitran", "scriptconv[fa]>=0.0.4a185"]
+fr = ["epitran", "gruut[fr]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+he = ["epitran", "phonikud_onnx", "phonikud", "scriptconv[he]>=0.0.4a185"]
+it = ["epitran", "gruut[it]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+ja = ["epitran", "gruut[ja]>=2.3.0", "scriptconv[ja-phonemizers]>=0.0.4a185", "misaki", "fugashi", "jaconv", "mojimoji", "spacy>=3.7,<4.0", "pyopenjtalk-plus[onnxruntime]>=0.4.1.post10", "pykakasi", "cutlet", "unidic-lite"]
+ko = ["epitran", "scriptconv[ko]>=0.0.4a185", "g2pk", "misaki[ko]"]
 mwl = ["scriptconv[mwl]"]
-pt = ["epitran", "scriptconv[o2i]", "tugaphone", "gruut[pt]>=2.3.0"]
+pt = ["epitran", "scriptconv[o2i]", "tugaphone>=3.6.0a3", "gruut[pt]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 ru = ["epitran", "gruut[ru]>=2.3.0"]
 sv = ["epitran", "gruut[sv]>=2.3.0"]
 sw = ["epitran", "gruut[sw]>=2.3.0"]
-vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a161", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
-zh = ["scriptconv[zh-phonemizers]>=0.0.4a161", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
+vi = ["epitran", "gruut[vi]>=2.3.0", "scriptconv[vi]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "misaki[vi]", "spacy>=3.7,<4.0", "viphoneme", "underthesea", "eng_to_ipa", "vinorm"]
+zh = ["scriptconv[zh-phonemizers]>=0.0.4a185", "epitran", "gruut[zh]>=2.3.0", "scriptconv-copyleft>=0.3.1a1", "misaki[zh]", "spacy>=3.7,<4.0", "g2pM", "pypinyin", "xpinyin", "pinyin_to_ipa", "jieba", "cn2an"]
 aa = ["epitran"]
 aii = ["epitran"]
 am = ["epitran"]
@@ -322,7 +310,7 @@ lez = ["epitran"]
 lij = ["epitran"]
 lo = ["epitran"]
 lsm = ["epitran"]
-lt = ["epitran", "scriptconv[espeak]>=0.0.4a161", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
+lt = ["epitran", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 luy = ["epitran"]
 lv = ["epitran"]
 mi = ["epitran"]
@@ -332,7 +320,7 @@ ms = ["epitran"]
 mt = ["epitran"]
 my = ["epitran"]
 nan = ["epitran"]
-nl = ["gruut[nl]>=2.3.0"]
+nl = ["gruut[nl]>=2.3.0", "scriptconv[espeak]>=0.0.4a185", "scriptconv-copyleft>=0.3.1a1", "espyak>=0.0.3a1"]
 ny = ["epitran"]
 om = ["epitran"]
 or = ["epitran"]
@@ -352,7 +340,7 @@ ta = ["epitran"]
 te = ["epitran"]
 tg = ["epitran"]
 # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-th = ["epitran", "scriptconv[th]>=0.0.4a161; python_version < '3.14'"]
+th = ["epitran", "scriptconv[th]>=0.0.4a185; python_version < '3.14'"]
 ti = ["epitran"]
 tk = ["epitran"]
 tpi = ["epitran"]
@@ -389,9 +377,9 @@ all = [
     # missing fails at synthesis. goruut gives pygoruut, stress gives stressonnx,
     # pt gives bifonia, he gives phonikud-onnx, espeak, gl and eu give
     # scriptconv-copyleft, and ar-phonemizers gives scriptconv-nonfree.
-    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a161",
+    "scriptconv[phonemizers,pt-phonemizers,ar-phonemizers,en-phonemizers,ja-phonemizers,zh-phonemizers,tashkeel,goruut,stress,pt,he,espeak,gl,eu]>=0.0.4a185",
     # tltk, the Thai backend, needs gensim, which has no wheel for Python 3.14
-    "scriptconv[th]>=0.0.4a161; python_version < '3.14'",
+    "scriptconv[th]>=0.0.4a185; python_version < '3.14'",
     "scriptconv-nonfree>=0.2.1a1",
     "scriptconv-copyleft>=0.3.1a1",
     # the BCP-47 language resolver, which scriptconv[stress] also requires
@@ -416,10 +404,6 @@ all = [
     "audioop-lts; python_version >= '3.13'",
     # Indic Parler needs the compiled reader, and the image installs `all`
     "tokenizers",
-    # MOSS-TTS-Nano imports sentencepiece at runtime (phoonnx/engines/mosstts.py)
-    "sentencepiece",
-    # Pocket TTS voice state loading (phoonnx/engines/pockettts.py).
-    "safetensors",
     # Griffin-Lim vocoder fallback (phoonnx/engines/vocoders/griffinlim.py).
     # librosa 1.2 removes griffinlim(random_state=), used by engines/matcha.py.
     "librosa>=0.9.2,<1.2",

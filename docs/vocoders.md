@@ -134,4 +134,4 @@ The neural vocoders of the bundled index live in their own Hugging Face reposito
 
 ---
 
-[Docs index](index.md) · Previous: [Engine architecture](engines.md) · Next: [Python API](api.md)
+[← Engine architecture](engines.md) · [Home](index.md) · [Python API →](api.md)

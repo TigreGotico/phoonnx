@@ -13,13 +13,17 @@ on:
     branches: [dev, master]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     uses: OpenVoiceOS/gh-automations/.github/workflows/build-tests.yml@dev
     secrets: inherit
     with:
       python_versions: '["3.11", "3.12", "3.13", "3.14"]'
-      install_extras: 'test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld'
+      install_extras: 'test,train,train-styletts2,train-eval,train-data,train-optispeech,train-pyworld,train-features'
       test_path: 'tests'
       system_deps: 'espeak-ng'
       # Two workers: with four, the training tests ran at once and the runner was shut down.

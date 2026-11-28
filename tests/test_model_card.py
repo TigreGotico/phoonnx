@@ -801,8 +801,8 @@ def test_an_english_voice_gets_text2spoken_with_no_extra():
 @pytest.mark.parametrize("config", [
     espeak_voice("pt-PT"),
     # voices that read their text, with each symbol their phonemizer gives for the accented letters
-    unicode_voice("unicode", "abcdefghijlmnopqrstuvxzáéêíóôãõç"),
-    unicode_voice("graphemes", "abcdefghijlmnopqrstuvxzáéêíóôãõç"),
+    unicode_voice("unicode", "abcdefghijlmnopqrstuvxzáéêíóôãõçü"),
+    unicode_voice("graphemes", "abcdefghijlmnopqrstuvxzáéêíóôãõçü"),
 ], ids=["espeak", "unicode", "graphemes"])
 def test_a_european_portuguese_voice_gets_the_pt_extra_and_bifonia(config):
     from bifonia import add_extra_diacritics

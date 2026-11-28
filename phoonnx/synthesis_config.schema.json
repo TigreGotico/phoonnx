@@ -43,6 +43,7 @@
         "volume": {"type": "number"},
         "super_resolution": {"type": "boolean"},
         "super_resolution_model": {"type": ["string", "null"]},
+        "stretch_pace": {"type": "boolean"},
         "voice_conversion": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/speaker_reference"}]},
         "voice_conversion_engine": {"type": ["string", "null"]}
       }

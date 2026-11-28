@@ -93,4 +93,4 @@ The frontend writes its own BOS and EOS symbols, so the config of an export sets
 
 ---
 
-[Docs index](../../index.md) · Previous: [MOSS-TTS-Nano](mosstts.md) · Next: [OuteTTS](outetts.md)
+[← MOSS-TTS-Nano](mosstts.md) · [Home](../../index.md) · [OuteTTS →](outetts.md)

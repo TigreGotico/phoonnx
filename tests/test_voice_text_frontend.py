@@ -241,16 +241,23 @@ class TestNormaliser(unittest.TestCase):
         voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA)
         text = "عندي 12 قطة"
         self.assertEqual(_synthesis_phonemes(voice, text, SynthesisConfig(stages=Stages(diacritize=False))),
-                         ShamiPhonemizer().phonemize(normalize(text, "ar"), "ar"))
-        self.assertNotEqual(normalize(text, "ar"), text)
+                         ShamiPhonemizer().phonemize(_shami_normalize(text), "ar"))
+        self.assertNotEqual(_shami_normalize(text), text)
 
     def test_a_shami_voice_diacritizes_the_normalised_sentence(self):
         voice = _voice("ar", PhonemeType.SHAMI, Alphabet.IPA, add_diacritics=True)
         text, marked = "عندي 12 قطة", "عِنْدِي اثنا عشر قِطَّة"
         with patch("scriptconv.frontend.diacritize", return_value=marked) as diacritize:
             phonemes = _synthesis_phonemes(voice, text)
-        self.assertEqual(diacritize.call_args.args[0], normalize(text, "ar"))
+        self.assertEqual(diacritize.call_args.args[0], _shami_normalize(text))
         self.assertEqual(phonemes, ShamiPhonemizer().phonemize(marked, "ar"))
+
+
+def _shami_normalize(text):
+    """*text* as text2spoken reads it for Shami: each script run in the language Shami names for it."""
+    from text2spoken import FrozenMap, NormalizationParams, normalize
+    params = NormalizationParams(script_languages=FrozenMap(ShamiPhonemizer().script_languages))
+    return normalize(text, "ar", params=params)
 
 
 class _OwnsNormalisation(UnicodeCodepointPhonemizer):

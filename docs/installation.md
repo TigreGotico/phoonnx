@@ -105,7 +105,7 @@ missing, the voice load stops with an `ImportError` that names the package (see
 | `cloning` | Loading non-WAV reference clips for [voice cloning](cloning.md) | `soundfile`, `scipy` |
 | `streaming` | Auto-splitting a monolithic VITS voice into a [streaming](streaming.md) encoder/decoder pair, `phoonnx-voices add-alignment`, and alignment on demand | `onnx` (graph surgery) |
 | `matcha` | Nothing that the Matcha adapter needs. The Matcha adapter and its vocoders import no `scipy`. | `scipy` |
-| `pockettts` | Pocket TTS voice states | `safetensors` |
+| `pockettts` | Nothing. phoonnx reads Pocket TTS voice states itself. | nothing |
 | `omnivoice` | Faster silence trimming for OmniVoice (a pure-numpy fallback runs without it) | `pydub` |
 | `indic-parler` | The Indic Parler tokenizers | `tokenizers` |
 | `chatterbox-multilingual` | Chatterbox per-language script transforms (ja/zh) | `pykakasi`, `spacy-pkuseg` |
@@ -324,4 +324,4 @@ voice loads offline. See [Use phoonnx offline](offline.md).
 
 ---
 
-[Docs index](index.md) · Previous: [Docs index](index.md) · Next: [Quickstart](quickstart.md)
+[Home](index.md) · [Quickstart →](quickstart.md)

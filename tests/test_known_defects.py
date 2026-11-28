@@ -766,3 +766,13 @@ def test_a_resume_without_jsonl_audio_spec_path_keeps_the_first_cache_base(tmp_p
         assert result.exit_code == 0, result.output
         folders = [Path(r[key]).parent for r in _manifest(out) for key in ("audio_norm_path", "audio_spec_path")]
         assert folders == [Path("/override/base/cache/22050")] * 4, folders
+
+
+# --- Bengali digits reach the grapheme voice as written ----------------------
+
+def test_bengali_grapheme_frontend_reads_digits_as_words():
+    from phoonnx.config import Alphabet, PhonemeType, _voice_phonemizer, voice_frontend
+
+    frontend = voice_frontend(_voice_phonemizer(PhonemeType.GRAPHEMES, Alphabet.UNICODE), "bn")
+    text = "".join(frontend.phonemize_flat("আমি 3টি আপেল কিনেছি"))
+    assert "তিনটি" in text, text

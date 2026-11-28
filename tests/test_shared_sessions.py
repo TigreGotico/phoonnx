@@ -431,7 +431,7 @@ def _plugin(testcase, keys, sizes, **config):
     """A plugin whose catalog maps voice ids to artifact keys and sizes."""
     from phoonnx.opm import PhoonnxTTSPlugin
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         return MagicMock(
             load=lambda **_kw: _Voice(voice_id),
             artifact_key=MagicMock(return_value=keys[voice_id]),

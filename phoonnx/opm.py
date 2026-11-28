@@ -11,6 +11,7 @@
 # limitations under the License.
 #
 import hashlib
+import json
 import os
 import tempfile
 import wave
@@ -24,11 +25,15 @@ from ovos_plugin_manager.templates.tts import TTS, TTSContext
 from scriptconv.frontend import Stages
 
 from phoonnx.config import AudioPost, SpeakerReference
-from phoonnx.model_manager import TTSModelManager, TTSModelInfo, choose_precision, resolve_precision
+from phoonnx.model_manager import TTSModelManager, TTSModelInfo, _lookup_distance, choose_precision, resolve_precision
 from phoonnx.ssml import SUPPORTED_TAGS, looks_like_ssml
 from phoonnx.util import normalize_lang
 from phoonnx.voice import TTSVoice, SynthesisConfig
-from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget
+from phoonnx.voice_cache import VoiceCache, VoiceExceedsMemoryBudget, parse_pinned
+
+# Bundled per-language defaults; each entry names the QA record that chose it.
+with open(os.path.join(os.path.dirname(__file__), "default_voices.json"), encoding="utf-8") as _f:
+    BUNDLED_DEFAULT_VOICES: Dict[str, str] = {tag: entry["voice_id"] for tag, entry in json.load(_f).items()}
 
 __all__ = ["PhoonnxTTSPlugin", "VoiceExceedsMemoryBudget"]
 
@@ -79,7 +84,7 @@ class PhoonnxTTSPlugin(TTS):
                                         threads=self.config.get("onnx_threads")),
             max_loaded_voices=self.config.get("max_loaded_voices"),
             max_loaded_bytes=self.config.get("max_loaded_bytes"),
-            pinned_voices=self.config.get("pinned_voices"),
+            pinned_voices=self._pinned_catalog_ids(self.config.get("pinned_voices")),
             load_wait_timeout=self.config.get("load_wait_timeout"))
         # Cloned cache identities, most recent last. Bounded because the
         # reference that creates one comes from the request.
@@ -98,6 +103,22 @@ class PhoonnxTTSPlugin(TTS):
             self.voice_info = self.get_default_voice(self.lang)
 
         self.voice_cache.preload_pinned()
+
+    def _pinned_catalog_ids(self, pinned) -> List[str]:
+        """The catalog id of each pinned voice, resolved the way :meth:`get_tts` resolves a request.
+
+        ``get_tts`` leases a voice by its catalog id, so a pin written the way a Piper client
+        names the voice (``lessac-medium``) must reach the cache under that id too: under its own
+        spelling it would be a second entry that a request never finds, loading the voice twice.
+        A pin that does not resolve is reported like a pin that fails to load, and left out.
+        """
+        resolved = []
+        for name in parse_pinned(pinned):
+            try:
+                resolved.append(self.get_voice_info(name, self.lang).voice_id)
+            except Exception as e:
+                LOG.error(f"pinned voice '{name}' failed to load: {e}")
+        return resolved
 
     def _cfg_opt(self, default, *keys):
         """
@@ -249,7 +270,9 @@ class PhoonnxTTSPlugin(TTS):
 
     def get_default_voice(self, lang: str) -> TTSModelInfo:
         """
-        Selects the default TTS model for the given language.
+        Selects the default TTS model for the given language: the configured
+        voice, then the bundled ``default_voices.json`` entry, then the first
+        voice of the voice index.
 
         Parameters:
         	lang (str): Language tag used to look up available voices (e.g., "en-US", "pt-PT").
@@ -273,6 +296,9 @@ class PhoonnxTTSPlugin(TTS):
                 LOG.warning(f"configured default voice '{voice_id}' for "
                             f"{lang} is unknown ({exc}); falling back to "
                             f"the voice index default")
+        for tag, voice_id in BUNDLED_DEFAULT_VOICES.items():
+            if _lookup_distance(tag, lang) == 0:
+                return self.get_voice_info(voice_id)
         voices = self.model_manager.get_lang_voices(lang)
         if not voices:
             LOG.info(f"{lang} voices not found - refreshing voice list")
@@ -300,13 +326,54 @@ class PhoonnxTTSPlugin(TTS):
         """
         return self.voice_cache.get(voice_id)
 
-    def get_voice_info(self, voice_id: str) -> TTSModelInfo:
+    def piper_alias(self, name: str, lang: Optional[str] = None) -> Optional[str]:
+        """The catalog id of the Piper voice that a Piper client means by ``name``, or None.
+
+        Piper clients (``ovos-tts-plugin-piper``, Home Assistant, ``piper`` itself) name a voice
+        ``en_US-lessac-medium`` or ``lessac-medium``; the catalog calls it
+        ``piper/en_US-lessac-medium``. A speaker suffix (``#3``) is dropped from any of the three
+        spellings. A short name that several languages share (``mls-medium``)
+        goes to the one that fits ``lang`` (default: the plugin's language): the same locale, then
+        the same language. If none fits it is ambiguous and nothing is chosen.
+        """
+        name = str(name or "").split("#", 1)[0].strip()      # "name#3" is a Piper speaker suffix
+        voices = self.model_manager.voices
+        if name.startswith("piper/"):                        # "piper/en_US-lessac-medium#3"
+            return name if name in voices else None
+        if not name or "/" in name:
+            return None
+        if f"piper/{name}" in voices:
+            return f"piper/{name}"
+        candidates = [vid for vid in voices
+                      if vid.startswith("piper/") and vid.split("-", 1)[-1] == name
+                      and "-" in vid]
+        if not candidates:
+            return None
+        wanted = standardize_lang(lang or self.lang).lower().replace("_", "-")
+
+        def rank(vid: str) -> int:
+            locale = vid[len("piper/"):].split("-", 1)[0].lower().replace("_", "-")
+            if locale == wanted:
+                return 0
+            return 1 if locale.split("-")[0] == wanted.split("-")[0] else 2
+
+        best = min(rank(vid) for vid in candidates)
+        chosen = sorted(vid for vid in candidates if rank(vid) == best)
+        if best == 2 and len(chosen) > 1:
+            return None
+        return chosen[0]
+
+    def get_voice_info(self, voice_id: str, lang: Optional[str] = None) -> TTSModelInfo:
         """
         Look up a voice in the catalog without loading it, refreshing the
-        catalog once if the id is not already known.
+        catalog once if the id is not already known. A Piper client's own name
+        for a voice (``lessac-medium``, ``en_US-lessac-medium``) is accepted
+        (see :meth:`piper_alias`).
 
         Parameters:
             voice_id (str): Identifier of the voice to look up.
+            lang (str, optional): Language that settles a short Piper name several
+                languages share. Default: the plugin's language.
 
         Returns:
             TTSModelInfo: Catalog entry for the voice.
@@ -315,10 +382,14 @@ class PhoonnxTTSPlugin(TTS):
             Exception: If `voice_id` is still unknown after a refresh.
         """
         info = self.model_manager.get_voice(voice_id)
+        if info is None and (alias := self.piper_alias(voice_id, lang)):
+            return self.model_manager.get_voice(alias)
         if info is None:
             LOG.info(f"{voice_id} not found - refreshing voice list")
             self.refresh_voices(force=True)
             info = self.model_manager.get_voice(voice_id)
+            if info is None and (alias := self.piper_alias(voice_id, lang)):
+                return self.model_manager.get_voice(alias)
             if info is None:
                 raise Exception(f"Unknown voice: {voice_id}")
         return info
@@ -344,7 +415,7 @@ class PhoonnxTTSPlugin(TTS):
         that loads its full files, or has int8 files only, keeps its identity.
         """
         ctxt = super()._get_ctxt(kwargs)
-        info = (self.get_voice_info(ctxt.voice) if ctxt.voice and ctxt.voice != "default"
+        info = (self.get_voice_info(ctxt.voice, ctxt.lang) if ctxt.voice and ctxt.voice != "default"
                 else self.get_default_voice(ctxt.lang))
         if self._loads_int8_variant(info):
             ctxt.voice = f"{ctxt.voice}#int8"
@@ -433,7 +504,10 @@ class PhoonnxTTSPlugin(TTS):
             voice = self.voice
         voice_info = (None if voice and voice != "default"
                       else self.get_default_voice(lang or self.lang))
-        voice_id = voice if voice_info is None else voice_info.voice_id
+        # A Piper client's own name for the voice is the catalog id from here on, so that two
+        # spellings of one voice share one loaded model.
+        voice_id = (self.get_voice_info(voice, lang or self.lang).voice_id
+                    if voice_info is None else voice_info.voice_id)
         # Leased for the whole synthesis: the cache may evict the entry
         # meanwhile, but the weights this call is using stay charged to the
         # memory budget, so no concurrent load is admitted against them.
@@ -481,9 +555,12 @@ class PhoonnxTTSPlugin(TTS):
                 # switched on in mycroft.conf. The core TTSVoice loads the engine lazily and
                 # upscales each chunk; synthesize_wav takes the sample rate from the first
                 # chunk, so the WAV header follows.
+                # stretch_pace: an engine that cannot change its pace (Orpheus, Llasa, ...)
+                # follows length_scale and SSML rate by a time stretch; off unless asked for.
                 audio=AudioPost(
                     super_resolution=bool(self._cfg_opt(False, "super_resolution")),
-                    super_resolution_model=self._cfg_opt(None, "super_resolution_model")),
+                    super_resolution_model=self._cfg_opt(None, "super_resolution_model"),
+                    stretch_pace=bool(self._cfg_opt(False, "stretch_pace"))),
             )
             # Written beside the target and moved into place only once the
             # synthesis has finished. Opening the target directly creates it

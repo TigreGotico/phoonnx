@@ -220,6 +220,7 @@ def _sample(scores: np.ndarray, temperature: float, top_k: int, top_p: float,
 
 class NeuTTSAdapter(BaseOnnxAdapter):
     """Adapter for the NeuTTS Air family (Qwen3 codec-LM + NeuCodec decoder)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     takes_symbols = True
 

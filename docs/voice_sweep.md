@@ -23,7 +23,7 @@ A voice passes when it loads through the index path (`TTSModelInfo.load`) and `T
 | `clipped` | more than 1% of the samples at full scale (0.99) |
 | `noise` | a median spectral flatness above 0.3 in the frames within 20 dB of the loudest |
 
-Each bound sits far from the values of working voices. Voices of five engines give 0.061 to 0.146 s of audio per character and a flatness of at most 0.009, or 0.164 on a line dense in fricatives. White noise has a flatness of 0.56.
+Each bound sits far from the values of working voices.
 
 Where an ASR model is verified for the language, the tool also transcribes the audio and records WER and CER. A wrong token id or a wrong phonemizer gives fluent audio that says the wrong thing, and only the transcript shows it. Coloured noise and speech under noise also pass the audio checks. For a language without a verified ASR model, `ok` means that the audio has none of the faults above. It does not mean that the speech is intelligible.
 
@@ -90,4 +90,4 @@ python scripts/voice_sweep.py diff base.jsonl head.jsonl --wer-margin 0.15
 
 ---
 
-[Docs index](index.md) · Previous: [Benchmarking](benchmarking.md) · Next: [Training quickstart](training/quickstart.md)
+[← Benchmarking](benchmarking.md) · [Home](index.md) · [Voice QA →](voices.md)

@@ -130,6 +130,22 @@ The two text graphs take the pooled style tokens (`style_dp` and `style_ttl`) as
 
 Put the four graphs, `tts.json` and `unicode_indexer.json` in one voice folder. The phoonnx `supertonic` inference engine loads them. The [engine architecture](../../engines.md) page describes the adapters.
 
+### Fixed shapes on a GPU (optional, off by default)
+
+A CUDA session pays a set-up cost of 0.1 to 0.2 s each time one of its graphs gets a shape that differs from its last call. A SuperTonic request runs four graphs, and the length of the text and of the speech change with every sentence, so on a Tesla P40 most of a 1.3 s request was this cost and not computation.
+
+Padding every call to a fixed shape removes it: through the OpenVoiceOS TTS server on the P40, three alternating rounds gave 0.53 to 0.59 s for a short, a medium and a long sentence, against 1.21 to 1.45 s without padding.
+
+The padding is not invisible to the graphs, although they take `text_mask` and `latent_mask`. With the same noise, the text encoder output differs from the unpadded one by 4 to 12 % at the real positions, and the padded vector estimator makes a different sample: its audio is as far from the unpadded audio as the audio of another noise draw is. The speech stays intelligible (twelve sentences read back with the same word error rate), so this is a different take of the same sentence, not damage. Because the difference is real, the runtime pads only when you ask for it.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `pad_text_to` in `engine_params` | `0` | The smallest number of text tokens a call is padded to, doubled for a longer input. `0` keeps the exact length. |
+| `pad_latent_to` in `engine_params` | `0` | The smallest number of latent frames a call is padded to, doubled for a longer input. `0` keeps the exact length. |
+| `PHOONNX_SUPERTONIC_PAD_TO` | unset | Sets both floors for a voice that does not set its own. `256` (about 18 s of speech) gave the result above. |
+
+A CPU gains nothing from padding and pays for the extra frames, so leave it off there.
+
 ## Licensing
 
 The training code in `phoonnx_train/supertonic/` is written from the SuperTonic paper and the public `Supertone/supertonic-3` ONNX graphs. The released weights have the OpenRAIL-M licence, and a model fine-tuned from them has the same licence.
@@ -146,4 +162,4 @@ The tokenizer also accepts the tag `na`.
 
 ---
 
-[Docs index](../../index.md) · Previous: [OmniVoice](omnivoice.md) · Next: [Rápido](rapido.md)
+[← OmniVoice](omnivoice.md) · [Home](../../index.md) · [Rápido →](rapido.md)

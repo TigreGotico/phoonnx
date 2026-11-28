@@ -165,7 +165,7 @@ If neither `decode_path` nor `vocoder_path` is set, synthesis raises `RuntimeErr
 
 | Param | Default | Description |
 |---|---|---|
-| `speed` | 1.0 | Speaking rate. It scales the estimated duration (above 1 is faster). |
+| `speed` | 1.0 | Speaking rate. It scales the estimated duration (above 1 is faster). `<prosody rate>` and a call's `length_scale` scale it, also when the voice config names it. A `speed` in the call's `extra` wins. |
 | `nfe` | 32 | ODE steps. The export fixes this value. |
 | `cfg_strength` | 2.0 | Classifier-free guidance strength. The export fixes it, and the adapter does not feed it. |
 | `sway_coefficient` | -1.0 | Sway coefficient of the time schedule. The export fixes it, and the adapter does not feed it. |
@@ -209,4 +209,4 @@ The Habibi-TTS licence is per model (see its [model card](https://huggingface.co
 
 ---
 
-[Docs index](../../index.md) · Previous: [ArkTTS](arktts.md) · Next: [MOSS-TTS-Nano](mosstts.md)
+[← ArkTTS](arktts.md) · [Home](../../index.md) · [MOSS-TTS-Nano →](mosstts.md)

@@ -262,4 +262,4 @@ If a "+RT" voice sounds wrong, suspect its export. Two checks catch the two fail
 
 ---
 
-[Docs index](index.md) · Previous: [Voice conversion](voice_conversion.md) · Next: [Phoneme alignment](alignment.md)
+[← Voice conversion](voice_conversion.md) · [Home](index.md) · [Phoneme alignment →](alignment.md)

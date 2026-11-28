@@ -57,6 +57,9 @@ _EMPHASIS = {"strong": (0.9, 1.15), "moderate": (0.95, 1.1),
 _XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 _PITCHES = {"x-low": -6.0, "low": -3.0, "medium": 0.0, "default": 0.0, "high": 3.0, "x-high": 6.0}
 _MAX_SEMITONES = 12.0
+# `<prosody range>`: how far the pitch moves around its mean, as a factor of the voice's own.
+_RANGES = {"x-low": 0.25, "low": 0.5, "medium": 1.0, "default": 1.0, "high": 1.5, "x-high": 2.0}
+_MAX_RANGE = 2.0
 # `<amazon:auto-breaths frequency=...>`: a breath after every n-th sentence of the piece.
 _BREATH_EVERY = {"x-low": 5, "low": 4, "medium": 3, "default": 3, "high": 2, "x-high": 1}
 _BREATH_MS = {"x-short": 150, "short": 250, "medium": 350, "default": 350, "long": 500, "x-long": 700}
@@ -93,8 +96,11 @@ SUPPORTED_TAGS = ("speak", "break", "prosody", "emphasis", "say-as", "phoneme", 
 class Piece:
     """Some text to say, how to say it, and the silence before it.
 
-    `pitch` is a shift in semitones; `effects` are names from :mod:`phoonnx.audio_fx`
-    (``"whisper"``, ``"soft"``, ``"drc"``); `breaths` is ``(volume, duration_ms, every)``: a
+    `pitch` is a shift in semitones; `pitch_range` is how far the pitch moves around its mean,
+    as a factor of the voice's own (``<prosody range>``; only an engine with a range control of its
+    own follows it); `tract` is the part of `pitch` that ``vocal-tract-length`` asks for, a shift of
+    the voice and its formants together, always made on the finished audio; `effects` are names
+    from :mod:`phoonnx.audio_fx` (``"whisper"``, ``"soft"``, ``"drc"``); `breaths` is ``(volume, duration_ms, every)``: a
     breath after every `every`-th sentence; `marks` are ``<mark name>`` events at the start of the
     piece, and `mark_pauses` holds, for each, how many milliseconds of the piece's `pause_ms` come
     before it (a mark written ahead of a ``<break>`` is heard before the silence, one written after it
@@ -113,6 +119,8 @@ class Piece:
     pause_ms: int = 0
     pitch: float = 0.0
     effects: tuple = ()
+    pitch_range: float = 1.0
+    tract: float = 0.0
     breaths: tuple | None = None
     marks: tuple = ()
     sound: tuple | None = None
@@ -222,6 +230,27 @@ def _volume(value: str | None, current: float) -> float:
         number = float(match.group(1))
         factor = 1 + number / 100 if value[0] in "+-" else number / 100
         return _clamp(current * factor, 0.0, 2.0)
+    return current
+
+
+def _range(value: str | None, current: float) -> float:
+    """The pitch range after applying a ``range`` value: ``x-high``, ``+50%``, ``50%``.
+
+    A keyword or a percentage scales the range in force (nested elements multiply). Semitone
+    and Hz forms need the pitch of the speaker, which phoonnx does not measure, so they are
+    ignored, as an absolute ``pitch`` in Hz is.
+    """
+    if not value:
+        return current
+    value = value.strip().lower()
+    if value in _RANGES:
+        return _clamp(current * _RANGES[value], 0.0, _MAX_RANGE)
+    match = re.fullmatch(rf"([+-]?{_NUMBER})%", value)
+    if match:
+        number = float(match.group(1))
+        factor = 1 + number / 100 if value[0] in "+-" else number / 100
+        if factor >= 0:
+            return _clamp(current * factor, 0.0, _MAX_RANGE)
     return current
 
 
@@ -526,6 +555,7 @@ class _Reader:
                 rate=_clamp(_rate(element.get("rate"), self.style.rate), 0.5, 2.0),
                 volume=_clamp(_volume(element.get("volume"), self.style.volume), 0.0, 2.0),
                 pitch=_pitch(element.get("pitch"), self.style.pitch),
+                pitch_range=_range(element.get("range"), self.style.pitch_range),
             )
             duration = _duration_ms(element.get("duration"), _MAX_DURATION_MS)
             longest = _duration_ms(element.get("amazon:max-duration"), _MAX_DURATION_MS)
@@ -595,7 +625,8 @@ class _Reader:
             shift = _tract_semitones(tract)
             self.styled(element, replace(
                 self.style, effects=effects,
-                pitch=_clamp(self.style.pitch + shift, -_MAX_SEMITONES, _MAX_SEMITONES)))
+                pitch=_clamp(self.style.pitch + shift, -_MAX_SEMITONES, _MAX_SEMITONES),
+                tract=_clamp(self.style.tract + shift, -_MAX_SEMITONES, _MAX_SEMITONES)))
         elif tag == "amazon:auto-breaths":
             volume = _volume(element.get("volume"), 1.0)
             ms = _BREATH_MS.get((element.get("duration") or "medium").lower(), 350)

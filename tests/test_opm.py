@@ -5,6 +5,8 @@ refresh-on-miss, and synthesis-parameter mapping - without any network
 access or real ONNX models. The model manager, voices and ``wave`` are
 mocked so the tests stay fast and hermetic.
 """
+import os
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -359,6 +361,10 @@ class TestSuperResolutionConfigThreading(unittest.TestCase):
         self.assertIs(cfg.audio.super_resolution, False)
         self.assertIsNone(cfg.audio.super_resolution_model)
 
+    def test_stretch_pace_is_off_unless_the_config_turns_it_on(self):
+        self.assertIs(self._synthesize().audio.stretch_pace, False)
+        self.assertIs(self._synthesize({"stretch_pace": True}).audio.stretch_pace, True)
+
     def test_mycroft_conf_block_reaches_synthesis_config(self):
         """Exactly the keys a user would write under
         ``tts/ovos-tts-plugin-phoonnx`` in mycroft.conf."""
@@ -413,6 +419,38 @@ class TestVoiceResolvedWithoutLoading(unittest.TestCase):
                 self.assertIsNotNone(plugin.voice_info)
                 self.assertEqual(plugin.voice_cache.voices, {},
                                  "boot must not load (download) the model")
+
+
+class TestBundledDefaultVoices(unittest.TestCase):
+    """``default_voices.json`` picks the default voice before the voice index order."""
+
+    def _plugin(self, config=None):
+        voices = (_FakeVoiceInfo("OpenVoiceOS/phoonnx_da-DK_miro_espeak", lang="da-DK"),
+                  _FakeVoiceInfo("supertonic/F1/da", lang="da"))
+        return _make_plugin(config={"lang": "da-DK", **(config or {})}, voices=voices)[0]
+
+    def test_danish_tags_resolve_to_the_bundled_default(self):
+        plugin = self._plugin()
+        for lang in ("da-DK", "da", "da_dk"):
+            with self.subTest(lang=lang):
+                self.assertEqual(plugin.get_default_voice(lang).voice_id, "supertonic/F1/da")
+
+    def test_lang2voice_beats_the_bundled_default(self):
+        plugin = self._plugin({"lang2voice": {"da": "OpenVoiceOS/phoonnx_da-DK_miro_espeak"}})
+        self.assertEqual(plugin.get_default_voice("da-DK").voice_id,
+                         "OpenVoiceOS/phoonnx_da-DK_miro_espeak")
+
+    def test_env_var_beats_the_bundled_default(self):
+        with patch.dict("os.environ", {"PHOONNX_DEFAULT_VOICE_DA": "OpenVoiceOS/phoonnx_da-DK_miro_espeak"}):
+            plugin = self._plugin()
+            self.assertEqual(plugin.get_default_voice("da").voice_id,
+                             "OpenVoiceOS/phoonnx_da-DK_miro_espeak")
+
+    def test_other_language_keeps_the_voice_index_default(self):
+        voices = (_FakeVoiceInfo("index/first-de", lang="de-DE"),
+                  _FakeVoiceInfo("supertonic/F1/da", lang="da"))
+        plugin, _ = _make_plugin(config={"lang": "de-DE"}, voices=voices)
+        self.assertEqual(plugin.get_default_voice("de-DE").voice_id, "index/first-de")
 
 
 class TestLangDefaultVoiceOverrides(unittest.TestCase):
@@ -553,3 +591,146 @@ class TestLangDefaultVoiceOverrides(unittest.TestCase):
             plugin, _ = _make_plugin(config={"lang": "ru-RU"}, voices=(fallback,))
             self.assertEqual(plugin.get_default_voice("ru-RU").voice_id,
                              "index/fallback")
+
+class TestPiperVoiceNames(unittest.TestCase):
+    """A Piper client says ``lessac-medium`` or ``en_US-lessac-medium``; the catalog says
+    ``piper/en_US-lessac-medium``."""
+
+    def _plugin(self, lang="en-US"):
+        ids = ["piper/en_US-lessac-medium", "piper/en_GB-alan-medium", "piper/fr_FR-mls-medium",
+               "piper/de_DE-mls-medium", "piper/nl_NL-mls-medium", "supertonic/F1/en"]
+        plugin, _ = _make_plugin({"lang": lang}, voices=[_FakeVoiceInfo(v) for v in ids])
+        return plugin
+
+    def test_the_locale_name_and_the_short_name_resolve(self):
+        plugin = self._plugin()
+        for name in ("piper/en_US-lessac-medium", "en_US-lessac-medium", "lessac-medium"):
+            with self.subTest(name=name):
+                self.assertEqual(plugin.get_voice_info(name).voice_id, "piper/en_US-lessac-medium")
+
+    def test_a_piper_speaker_suffix_is_ignored(self):
+        self.assertEqual(self._plugin().get_voice_info("lessac-medium#3").voice_id,
+                         "piper/en_US-lessac-medium")
+
+    def test_a_short_name_other_languages_share_goes_to_the_requested_language(self):
+        plugin = self._plugin()
+        for lang, want in (("fr-FR", "fr_FR"), ("de-DE", "de_DE"), ("nl-NL", "nl_NL")):
+            with self.subTest(lang=lang):
+                self.assertEqual(plugin.get_voice_info("mls-medium", lang).voice_id,
+                                 f"piper/{want}-mls-medium")
+
+    def test_the_plugin_language_settles_it_when_the_call_names_none(self):
+        self.assertEqual(self._plugin("fr-FR").get_voice_info("mls-medium").voice_id,
+                         "piper/fr_FR-mls-medium")
+
+    def test_an_ambiguous_short_name_is_an_error_not_a_guess(self):
+        with self.assertRaises(Exception) as ctx:
+            self._plugin("en-US").get_voice_info("mls-medium")
+        self.assertIn("Unknown voice", str(ctx.exception))
+
+    def test_a_single_voice_in_another_language_is_still_found(self):
+        self.assertEqual(self._plugin("en-US").get_voice_info("alan-medium").voice_id,
+                         "piper/en_GB-alan-medium")
+
+    def test_a_catalog_id_that_is_not_piper_is_left_alone(self):
+        self.assertEqual(self._plugin().get_voice_info("supertonic/F1/en").voice_id,
+                         "supertonic/F1/en")
+        with self.assertRaises(Exception):
+            self._plugin().get_voice_info("F1")
+
+    def test_two_spellings_load_one_model(self):
+        plugin = self._plugin()
+        info = plugin.get_voice_info("lessac-medium")
+        info.load = MagicMock(return_value=info.tts_voice)
+        with patch.object(opm, "wave"):
+            for name in ("lessac-medium", "en_US-lessac-medium", "piper/en_US-lessac-medium"):
+                plugin.get_tts("hello", "/tmp/out.wav", lang="en-US", voice=name)
+        self.assertEqual(info.load.call_count, 1)
+        self.assertEqual(info.tts_voice.synthesize_wav.call_count, 3)
+
+    # --- a catalog id with a Piper speaker suffix ---------------------------------------------
+
+    def test_a_speaker_suffix_on_a_catalog_id_is_ignored(self):
+        self.assertEqual(
+            self._plugin().get_voice_info("piper/en_US-lessac-medium#3").voice_id,
+            "piper/en_US-lessac-medium")
+
+    def test_a_speaker_suffix_on_a_catalog_id_that_is_not_piper_is_still_unknown(self):
+        with self.assertRaises(Exception) as ctx:
+            self._plugin().get_voice_info("supertonic/F1/en#3")
+        self.assertIn("Unknown voice", str(ctx.exception))
+
+    def test_a_suffixed_catalog_id_synthesizes_with_the_requested_speaker(self):
+        # Every spelling, suffixed or not, loads one model, and the speaker of the request
+        # reaches synthesis the same way for each of them.
+        plugin = self._plugin()
+        info = plugin.get_voice_info("lessac-medium")
+        info.load = MagicMock(return_value=info.tts_voice)
+        names = ("lessac-medium#3", "en_US-lessac-medium#3", "piper/en_US-lessac-medium#3")
+        with patch.object(opm, "wave"), tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out.wav")
+            for name in names:
+                plugin.get_tts("hello", out, lang="en-US", voice=name, speaker_id=2)
+        self.assertEqual(info.load.call_count, 1)
+        calls = info.tts_voice.synthesize_wav.call_args_list
+        self.assertEqual(len(calls), len(names))
+        speakers = [next(c.speaker for c in (*call.args, *call.kwargs.values())
+                         if isinstance(c, SynthesisConfig)) for call in calls]
+        self.assertEqual(speakers, [2, 2, 2])
+
+    # --- a pinned voice named the way a Piper client names it ---------------------------------
+
+    MB = 10 ** 6
+
+    def _counted_plugin(self, **config):
+        """A plugin whose voices count their loads and have a size and an artifact key."""
+        ids = ["piper/en_US-lessac-medium", "piper/en_GB-alan-medium", "piper/fr_FR-mls-medium",
+               "piper/de_DE-mls-medium", "piper/nl_NL-mls-medium", "supertonic/F1/en"]
+        voices = {}
+        for vid in ids:
+            info = _FakeVoiceInfo(vid)
+            info.load = MagicMock(return_value=info.tts_voice)
+            info.disk_size = MagicMock(return_value=300 * self.MB)
+            info.artifact_key = MagicMock(return_value=f"files:{vid}")
+            voices[vid] = info
+        config.setdefault("lang", "en-US")
+        plugin, _ = _make_plugin(config, voices=list(voices.values()))
+        return plugin, voices
+
+    def test_a_pinned_piper_name_and_a_request_by_catalog_id_share_one_cache_entry(self):
+        plugin, voices = self._counted_plugin(pinned_voices=["lessac-medium"],
+                                              max_loaded_voices=1, max_loaded_bytes="1GB")
+        lessac = voices["piper/en_US-lessac-medium"]
+        self.assertEqual(lessac.load.call_count, 1, "the pin loads the voice at start")
+        with patch.object(opm, "wave"), tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out.wav")
+            for name in ("piper/en_US-lessac-medium", "en_US-lessac-medium", "lessac-medium"):
+                plugin.get_tts("hello", out, lang="en-US", voice=name)
+        self.assertEqual(lessac.load.call_count, 1, "a request finds the pinned entry")
+        self.assertEqual(list(plugin.voice_cache.voices), ["piper/en_US-lessac-medium"])
+        self.assertEqual(plugin.voice_cache.pinned_voices, ["piper/en_US-lessac-medium"])
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 300 * self.MB,
+                         "the byte budget counts the voice once")
+
+    def test_two_spellings_of_one_pin_are_one_pin(self):
+        plugin, voices = self._counted_plugin(
+            pinned_voices=["lessac-medium", "piper/en_US-lessac-medium"], max_loaded_voices=1)
+        self.assertEqual(plugin.voice_cache.pinned_voices, ["piper/en_US-lessac-medium"])
+        self.assertEqual(plugin.voice_cache.max_loaded_voices, 1)
+        self.assertEqual(voices["piper/en_US-lessac-medium"].load.call_count, 1)
+
+    def test_a_pinned_short_name_resolves_with_the_plugin_language(self):
+        plugin, voices = self._counted_plugin(lang="fr-FR", pinned_voices="mls-medium")
+        self.assertEqual(plugin.voice_cache.pinned_voices, ["piper/fr_FR-mls-medium"])
+        self.assertEqual(list(plugin.voice_cache.voices), ["piper/fr_FR-mls-medium"])
+
+    def test_a_pin_that_does_not_resolve_is_reported_as_a_failed_pin(self):
+        # "mls-medium" is ambiguous for an English plugin: no voice fits, so nothing is pinned
+        # under that name, and the operator is told so the way a pin that fails to load is.
+        with patch.object(opm, "LOG") as log:
+            plugin, voices = self._counted_plugin(pinned_voices=["mls-medium", "lessac-medium"])
+        self.assertEqual(plugin.voice_cache.pinned_voices, ["piper/en_US-lessac-medium"])
+        self.assertEqual(list(plugin.voice_cache.voices), ["piper/en_US-lessac-medium"])
+        errors = [str(c.args[0]) for c in log.error.call_args_list]
+        self.assertTrue(any("pinned voice 'mls-medium' failed to load" in e for e in errors),
+                        errors)

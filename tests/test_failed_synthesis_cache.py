@@ -33,7 +33,7 @@ def _plugin(testcase, synth_side_effect=None):
         patch("phoonnx.opm.TTSModelManager"),
         patch.object(PhoonnxTTSPlugin, "get_default_voice", return_value=MagicMock()),
         patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                     side_effect=lambda v: MagicMock(
+                     side_effect=lambda v, lang=None: MagicMock(
                          load=MagicMock(return_value=model))),
         patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
         patch.object(PhoonnxTTSPlugin, "_resolve_speaker", return_value=None),
@@ -151,7 +151,7 @@ class TestATruncatedWriteIsNotPublished(unittest.TestCase):
             patch("phoonnx.opm.TTSModelManager"),
             patch.object(PhoonnxTTSPlugin, "get_default_voice", return_value=MagicMock()),
             patch.object(PhoonnxTTSPlugin, "get_voice_info",
-                     side_effect=lambda v: MagicMock(
+                     side_effect=lambda v, lang=None: MagicMock(
                          load=MagicMock(return_value=model))),
             patch.object(PhoonnxTTSPlugin, "_providers", return_value=None),
             patch.object(PhoonnxTTSPlugin, "_resolve_speaker", return_value=None),
@@ -185,6 +185,10 @@ class TestConcurrentRequestsForTheSameSentence(unittest.TestCase):
         directory = tempfile.mkdtemp()
         target = os.path.join(directory, "audio.wav")
         plugin = _plugin(self)
+        # MagicMock creates its magic methods on first use, and that is not
+        # thread-safe: one warm-up call keeps the race inside the plugin.
+        plugin.get_tts("a warm-up sentence", os.path.join(directory, "warm.wav"))
+        os.remove(os.path.join(directory, "warm.wav"))
         errors = []
 
         def go():

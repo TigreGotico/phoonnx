@@ -79,6 +79,7 @@ class VitsStreamingAdapter(BaseOnnxAdapter):
     overridden to run the discard-and-stitch chunk loop instead of a single
     ``session.run``.
     """
+    VITS_GRAPH = True
 
     MEMOIZED_WRITES = {
         # Samples per latent frame, measured once from the decoder itself.

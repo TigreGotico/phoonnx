@@ -93,7 +93,9 @@ or a status on this page differs from its table.
 | prosody pitch keyword | supported | words kept, pitch +3.0 st |
 | prosody pitch in Hz | unsupported | words kept |
 | prosody contour | unsupported | words kept |
-| prosody range | unsupported | words kept |
+| prosody range keyword | supported | words kept, pitch range x2.0 on an [engine with a range control](#pitch-made-by-the-engine); no effect on the others |
+| prosody range percent | supported | words kept, pitch range x0.5 on an [engine with a range control](#pitch-made-by-the-engine); no effect on the others |
+| prosody range in semitones | unsupported | words kept |
 | prosody volume keyword | supported | words kept, volume x0.65 |
 | prosody volume dB | supported | words kept, volume x0.50 |
 | prosody volume number | extension | words kept, volume x0.50 |
@@ -122,6 +124,30 @@ or a status on this page differs from its table.
 | amazon prefix declared by the document | extension | words kept, effects whisper |
 | unknown element | degraded | says "words end" |
 
+## Pitch made by the engine
+
+`<prosody pitch>` is a shift of the finished audio (a resample and a time stretch), which moves
+the formants with the pitch, as a smaller or larger speaker would sound. An engine with pitch
+inputs of its own makes the shift itself instead, and keeps the formants where the voice has
+them. `<prosody range>` (how far the pitch moves around its mean) has no audio form, so it
+reaches only these engines:
+
+| Engine | `pitch` | `range` |
+| --- | --- | --- |
+| tiny-voca | `pitch_shift`, ln(2)/12 for each semitone | `pitch_range` |
+| Mixer-TTS, and FastPitch graphs with `pitch_mul` and `pitch_add` | `pitch_mul` and `pitch_add`, when the voice states the pitch mean and standard deviation in Hz it was trained with (`pitch_mean` and `pitch_std` in `engine_params`, or in the graph's metadata, which phoonnx's Mixer-TTS export writes; a voice z-scored per speaker gives a list of each, by speaker id). Without them, the audio is shifted | `pitch_mul`, on a single-speaker voice. A multi-speaker voice gets none: measured on the Arabic voices, the range moved each speaker's mean pitch and widened it unevenly |
+| any other engine | the finished audio is shifted | no effect |
+
+The engine's keys build on the voice's own and the call's `extra`: a voice that sets
+`pitch_shift` is shifted from there. The part of the pitch that `vocal-tract-length` asks for
+always stays on the audio, because it is meant to move the formants. Measured on real models:
+a +4 st and a -4 st shift land within 0.4 st on tiny-voca and Mixer-TTS, and the spectral
+envelope moves by 0 to 5 % against 19 to 24 % for the audio shift. A wider range works (x-high
+widens the pitch movement 1.6 to 1.7 times); a narrower one works only in part (x-low narrows it
+to 0.86 to 0.92 of the voice's), because part of the movement comes from the decoder, not the
+predicted pitch. OptiSpeech's `p_factor` is not used: on the voice measured it moved the mean
+pitch with the range (+3.1 st at x-high, against 0.04 st on Mixer-TTS).
+
 ## How a document is read
 
 * phoonnx reads the input inside a `<speak>` of its own. Text after the closing tag, two
@@ -142,6 +168,24 @@ or a status on this page differs from its table.
 * `say-as` goes to `TextFrontend.say_as` of the voice with its written value,
   `interpret-as`, `format`, `detail` and the language in force. phoonnx holds no reading
   rule. text2spoken reads the value.
+
+## Engines without pace control
+
+`<prosody rate>` and `<emphasis>` change the length scale of the call, and most engines read it
+or a speed key of their own. The codec language models make speech token by token until the
+model ends it, so a length scale cannot reach them: ArkTTS, Chatterbox, Indic Parler-TTS,
+Llasa, Magpie, MOSS-TTS-Nano, NeuTTS, Orpheus, OuteTTS, Pocket TTS, Qwen3-TTS and Spark-TTS.
+Shami has its speed fixed inside the exported graph. Their adapters set `PACE_CONTROL = False`.
+Indic Parler-TTS can also be asked for a pace in its description text, such as "a moderate
+speed"; that is separate from SSML.
+
+On these engines a rate is dropped, unless `SynthesisConfig.audio.stretch_pace` is on. Then the
+finished audio of each sentence is time-stretched (WSOLA, the pitch kept) by the call's length
+scale over the voice's own, within 0.5x and 2x. A stretch changes the recording, not the
+speech: the pauses and breaths get longer or shorter with the words. A speech recogniser reads
+stretched Piper speech as well as Piper's own slower and faster speech, from 0.5x to 2x.
+`TTSVoice.stream` yields a stretched sentence as one chunk. `<prosody duration>` fits the
+stretched audio, as it fits any other.
 
 ## Time
 
@@ -174,6 +218,7 @@ or a status on this page differs from its table.
 | `<prosody duration>` | 600 s. The stretch itself stays within 0.5x and 2x |
 | rate | 0.5x to 2x |
 | pitch | -12 to +12 semitones |
+| range | 0 to 2x the voice's own |
 | volume | 0 to 2x. A dB value counts up to 96 dB in either direction |
 | nesting | 100 levels. Deeper elements are read as text |
 
@@ -185,13 +230,16 @@ the reader slow down more than that.
 
 The markup elements that change the text or the model settings cost nothing after the model:
 `<prosody rate>`, `volume`, `<emphasis>`, `<break>`, `<mark>`, `say-as`, `sub` and `phoneme`.
+With `audio.stretch_pace` on, `<prosody rate>` and `<emphasis>` on an engine without pace
+control run a WSOLA time stretch (below).
 The effects below run on the finished audio with numpy. Their cost grows in proportion to the
 length of the audio, and it does not include the model:
 
 | Feature | What it runs |
 | --- | --- |
-| `<prosody pitch>`, `vocal-tract-length` | a pitch shift (resample and time stretch) |
+| `<prosody pitch>` (unless the [engine makes it](#pitch-made-by-the-engine)), `vocal-tract-length` | a pitch shift (resample and time stretch) |
 | `<prosody duration>`, `amazon:max-duration` | a WSOLA time stretch |
+| `<prosody rate>`, `<emphasis>` with `stretch_pace`, on an [engine without pace control](#engines-without-pace-control) | a WSOLA time stretch, 15 to 30 ms per 2 s of 24 kHz audio |
 | `<amazon:effect name="whispered">`, `phonation="soft"` | shaped breath noise from a short-time Fourier transform |
 | `<amazon:effect name="drc">` | a dynamic range compressor, under 1 ms per second of audio |
 | `<amazon:auto-breaths>`, `<amazon:breath>` | a short generated breath |
@@ -202,9 +250,10 @@ the audio it changes.
 
 ## Unsupported on purpose
 
-* `<prosody pitch="150Hz">`, `contour` and `range`: a VITS voice has no pitch contour to
-  steer. The semitone and percent forms change the finished audio. An absolute frequency
-  needs the pitch of the speaker, which phoonnx does not measure.
+* `<prosody pitch="150Hz">`, `contour`, and a `range` in semitones or Hz: a VITS voice has no
+  pitch contour to steer, and an absolute frequency needs the pitch of the speaker, which
+  phoonnx does not measure. The semitone and percent forms of `pitch` and the keyword and
+  percent forms of `range` work, as [Pitch made by the engine](#pitch-made-by-the-engine) says.
 * `<audio src>`: nothing is fetched or played. The fallback text inside it is read.
 * `<lexicon>` and `<lookup>`: pronunciation lexicons are not loaded. Use `<phoneme>` or
   `<sub>`.
@@ -225,4 +274,4 @@ the audio it changes.
 
 ---
 
-[Docs index](index.md) · Previous: [Usage guide](usage.md) · Next: [Voice cloning](cloning.md)
+[← Usage guide](usage.md) · [Home](index.md) · [Voice cloning →](cloning.md)

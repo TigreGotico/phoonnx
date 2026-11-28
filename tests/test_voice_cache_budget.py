@@ -36,13 +36,13 @@ def _plugin(testcase, sizes=None, load_hook=None, **config):
 
     sizes = sizes or {}
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         def load(**_kwargs):
             if load_hook is not None:
                 load_hook(voice_id)
             return f"model:{voice_id}"
 
-        return MagicMock(load=load,
+        return MagicMock(voice_id=voice_id, load=load,
                          disk_size=MagicMock(
                              return_value=sizes.get(voice_id, 10 * MB)))
 
@@ -149,6 +149,34 @@ class TestByteBudget(unittest.TestCase):
         plugin.get_model("small20")
         self.assertIn("omni", plugin.voice_cache.voices)
         self.assertLessEqual(plugin.voice_cache.resident_bytes(), 3 * GB)
+
+    def test_a_voice_is_charged_for_the_files_its_load_fetched(self):
+        # A cache that held only part of a voice measures that part before the
+        # load; the load fetches the rest. Pocket TTS after its entries moved to
+        # full-precision graphs: the shared files are cached, the 380 MB of full
+        # graphs are not.
+        on_disk = {"partial": 100 * MB, "other": 400 * MB}
+
+        def fetch(voice_id):
+            if voice_id == "partial":
+                on_disk["partial"] = 400 * MB
+
+        plugin = _plugin(self, sizes=on_disk, load_hook=fetch, max_loaded_bytes="500MB")
+        infos = {}
+        real = plugin.get_voice_info
+
+        def info_for(voice_id, lang=None):
+            info = infos.setdefault(voice_id, real(voice_id))
+            info.disk_size.side_effect = lambda: on_disk[voice_id]
+            return info
+
+        plugin.get_voice_info = info_for
+        plugin.get_model("partial")
+        self.assertEqual(plugin.voice_cache.resident_bytes(), 400 * MB)
+        plugin.get_model("other")   # 400 + 400 MB does not fit in 500 MB
+        self.assertIn("other", plugin.voice_cache.voices)
+        self.assertNotIn("partial", plugin.voice_cache.voices)
+        self.assertLessEqual(plugin.voice_cache.resident_bytes(), 500 * MB)
 
     def test_two_big_voices_cannot_be_resident_together(self):
         plugin = _plugin(self, sizes={"omniA": 2200 * MB, "omniB": 2200 * MB},
@@ -510,7 +538,7 @@ class _Adapter:
 def _cyclic_plugin(testcase, keys, sizes, **config):
     from phoonnx.opm import PhoonnxTTSPlugin
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         return MagicMock(
             load=lambda **_kw: _CyclicVoice(voice_id),
             artifact_key=MagicMock(return_value=keys[voice_id]),
@@ -583,7 +611,7 @@ def _plugin_shared_keys(testcase, keys, sizes, **config):
     """A plugin whose catalog maps voice ids to artifact keys, real load()."""
     from phoonnx.opm import PhoonnxTTSPlugin
 
-    def info_for(voice_id):
+    def info_for(voice_id, lang=None):
         return MagicMock(
             load=lambda **_kw: _WeakrefableVoice(voice_id),
             artifact_key=MagicMock(return_value=keys[voice_id]),
@@ -718,7 +746,7 @@ class TestPostLoadEviction(unittest.TestCase):
             def __init__(self, voice_id):
                 self.voice_id = voice_id
 
-        def info_for(voice_id):
+        def info_for(voice_id, lang=None):
             def load(**_kw):
                 if voice_id == "big":
                     plugin_holder["p"].get_model("extra")

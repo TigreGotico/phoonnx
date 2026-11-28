@@ -253,4 +253,4 @@ families. See [Engine architecture](engines.md), [Voice cloning](cloning.md) and
 
 ---
 
-[Docs index](index.md) · Previous: [Choose a voice](choose_voice.md) · Next: [CLI reference](cli.md)
+[← Choose a voice](choose_voice.md) · [Home](index.md) · [CLI reference →](cli.md)

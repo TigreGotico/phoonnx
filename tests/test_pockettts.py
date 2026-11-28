@@ -1,6 +1,7 @@
 import json
 
 import re
+import struct
 import numpy as np
 import pytest
 
@@ -432,13 +433,21 @@ def test_derive_step_infers_from_the_cache_length():
     assert PocketTTSAdapter._derive_step(state).tolist() == [6]
 
 
-def test_load_voice_state_maps_a_saved_state_onto_the_manifest(tmp_path):
-    pytest.importorskip("safetensors")
-    from safetensors.numpy import save_file
+def _write_safetensors(path, tensors):
+    """Write ``{name: (dtype, shape, raw bytes)}`` in the safetensors layout."""
+    header, blob = {"__metadata__": {"format": "pt"}}, b""
+    for name, (dtype, shape, raw) in tensors.items():
+        header[name] = {"dtype": dtype, "shape": shape, "data_offsets": [len(blob), len(blob) + len(raw)]}
+        blob += raw
+    head = json.dumps(header).encode()
+    path.write_bytes(struct.pack("<Q", len(head)) + head + blob)
 
+
+def test_load_voice_state_maps_a_saved_state_onto_the_manifest(tmp_path):
     path = tmp_path / "voice.safetensors"
-    save_file({"transformer.layers.0.self_attn/cache": np.ones((2, 1, 3, 2, 2), np.float32),
-               "transformer.layers.0.self_attn/step": np.array([3], np.int64)}, str(path))
+    _write_safetensors(path, {
+        "transformer.layers.0.self_attn/cache": ("F32", [2, 1, 3, 2, 2], struct.pack("<24f", *[1.0] * 24)),
+        "transformer.layers.0.self_attn/step": ("I64", [1], struct.pack("<q", 3))})
 
     a = _adapter()
     state = a.load_voice_state(str(path))
@@ -448,12 +457,9 @@ def test_load_voice_state_maps_a_saved_state_onto_the_manifest(tmp_path):
 
 
 def test_load_voice_state_derives_a_missing_step(tmp_path):
-    pytest.importorskip("safetensors")
-    from safetensors.numpy import save_file
-
     path = tmp_path / "voice.safetensors"
-    save_file({"transformer.layers.0.self_attn/cache": np.ones((2, 1, 3, 2, 2), np.float32)},
-              str(path))
+    _write_safetensors(path, {
+        "transformer.layers.0.self_attn/cache": ("F32", [2, 1, 3, 2, 2], struct.pack("<24f", *[1.0] * 24))})
     a = _adapter()
     assert a.load_voice_state(str(path))["state_1"].tolist() == [0]
 

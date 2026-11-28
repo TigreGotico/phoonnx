@@ -200,6 +200,7 @@ def apply_template(offsets: np.ndarray, template: Mapping[str, Any], scale: floa
 
 class XVitsAdapter(BaseOnnxAdapter):
     """Adapter for x-vits: prosody sampled by flow matching, then a VITS acoustic model."""
+    VITS_GRAPH = True
 
     READS_TEXT = True
 

@@ -57,6 +57,7 @@ def _sample_top_p(logits: np.ndarray, temperature: float, top_p: float, rng) -> 
 
 class ChatterboxAdapter(BaseOnnxAdapter):
     """Adapter for Chatterbox (autoregressive codec-LM, d-vector cloning, exaggeration)."""
+    PACE_CONTROL = False  # a codec language model: the model decides when the speech ends
 
     MEMOIZED_WRITES = {
         # KV-cache geometry, read off the model's own input shapes.
