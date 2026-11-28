@@ -46,7 +46,7 @@ plugin = PhoonnxTTSPlugin(config=config)
 plugin.get_tts("Hello from phoonnx.", "check.wav", voice=config["voice"])
 ```
 
-`get_tts` returns the path of the WAV file and `None`. The first call downloads the voice. Play `check.wav` to hear it. A call without `voice` speaks the configured `voice` when its language is the language of the plugin. A call in another language uses the default voice of that language. If the plugin stops at start, read [Errors you may see](installation.md#errors-you-may-see).
+An SSML document (`<speak>...</speak>`, with or without attributes) reaches the voice as it was written: the plugin reads the markup itself, as [SSML](ssml.md) describes. `get_tts` returns the path of the WAV file and `None`. The first call downloads the voice. Play `check.wav` to hear it. A call without `voice` speaks the configured `voice` when its language is the language of the plugin. A call in another language uses the default voice of that language. If the plugin stops at start, read [Errors you may see](installation.md#errors-you-may-see).
 
 ### Multi-speaker voices
 
