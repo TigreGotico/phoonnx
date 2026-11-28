@@ -1436,7 +1436,10 @@ class TTSVoice:
             base_length = self.config.length_scale
         if base_length is None:
             base_length = self.adapter.default_params().get("length_scale", 1.0)
-        voice_lang = lang or self.config.lang_code
+        # The language of the text where the markup says none: the caller's, which an engine
+        # that is told the tag may also get as SynthesisConfig.language, else the voice's.
+        asked = base.language if self.takes_language(base.language) else None
+        voice_lang = lang or asked or self.config.lang_code
         # Set by the first speech chunk: voice conversion and super-resolution can move it off
         # the model's own rate, and every chunk of one stream must share it.
         rate: Optional[int] = None
@@ -1521,6 +1524,9 @@ class TTSVoice:
                 settings["language"] = lang_id
             elif self.takes_language(spoken_in):
                 settings["language"] = spoken_in
+            elif self.takes_language(base.language):
+                # A language the model lacks keeps the voice's own, not the one the call asked.
+                settings["language"] = None
             native, shifted = self._native_pitch(piece, base)
             if native:
                 settings["extra"] = {**base.extra, **native}

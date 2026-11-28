@@ -10,7 +10,7 @@ from phoonnx.engines.supertonic import (
     load_unicode_indexer, length_to_mask, sample_noisy_latent, bucket_size, PAD_ENV,
 )
 from phoonnx.tokenizer import TTSTokenizer, Vocabulary
-from phoonnx.voice import TTSVoice
+from phoonnx.voice import SynthesisConfig, TTSVoice
 
 
 def _req(**params):
@@ -625,6 +625,15 @@ def test_ssml_lang_and_the_call_language_reach_supertonic():
     asked.clear()
     list(voice.synthesize_ssml("<speak>bonjour</speak>", lang="fr-CA"))
     assert asked == [("bonjour", "fr-CA")]
+    asked.clear()
+    # A language the model lacks keeps the voice's own, whatever the call asked for.
+    list(voice.synthesize_ssml('<speak>bonjour <lang xml:lang="th-TH">word</lang></speak>',
+                               SynthesisConfig(language="fr-FR"), lang="fr-FR"))
+    assert asked == [("bonjour", "fr-FR"), ("word", None)]
+    asked.clear()
+    # SynthesisConfig.language alone is the language of the text.
+    list(voice.synthesize_ssml("<speak>annyeong</speak>", SynthesisConfig(language="ko")))
+    assert asked == [("annyeong", "ko")]
     assert voice.takes_language("pt-BR") is True and voice.takes_language("th") is False
 
 
