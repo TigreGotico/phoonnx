@@ -281,6 +281,16 @@ class BaseOnnxAdapter(ABC):
         """
         return type(self).encode_text is BaseOnnxAdapter.encode_text
 
+    def takes_language(self, code: str) -> bool:
+        """Whether a call may ask this engine to speak the language *code* (a BCP-47 tag).
+
+        For a model that speaks several languages and is told which by the tag itself, on a
+        voice with no ``lang_id_map``. The tag then reaches the adapter as
+        ``SynthesisConfig.language``. False for every other engine, whose voice speaks the
+        language it was made for.
+        """
+        return False
+
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Turn text into the model's input token-id sequences, one per sentence.
 

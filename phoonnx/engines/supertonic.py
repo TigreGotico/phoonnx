@@ -97,6 +97,15 @@ _EXPR_REPLACEMENTS = {"@": " at ", "e.g.,": "for example, ", "i.e.,": "that is, 
 _TERMINAL_PUNCT = re.compile(r"[.!?;:,'\"')\]}…。』】〉》›»]$")
 
 
+def language_of(code: Any) -> Optional[str]:
+    """The SuperTonic language of a BCP-47 tag (``fr-CA`` is ``fr``), or None for anything
+    the model was not trained on."""
+    if not isinstance(code, str):
+        return None
+    primary = code.replace("_", "-").split("-")[0].lower()
+    return primary if primary in AVAILABLE_LANGS and primary != "na" else None
+
+
 def preprocess_text(text: str, lang: str) -> str:
     """NFKD-normalize (via the shared ``UnicodeCodepointPhonemizer``), strip emoji/stray
     symbols, fix punctuation spacing, terminate the sentence, and wrap the result in
@@ -319,14 +328,22 @@ class SuperTonicAdapter(BaseOnnxAdapter):
         return (env if self.pad_text_to is None else self.pad_text_to,
                 env if self.pad_latent_to is None else self.pad_latent_to)
 
+    def takes_language(self, code: str) -> bool:
+        """One model speaks all of :data:`AVAILABLE_LANGS`: the call says which."""
+        return language_of(code) is not None
+
     def encode_text(self, text: str, voice: Any, syn_config: Any) -> List[List[int]]:
         """Preprocess + chunk raw text, then map each chunk through the standard
         tokenizer built from SuperTonic's own unicode indexer. Chunk length follows
         upstream (120 chars for ko/ja, 300 otherwise); out-of-vocabulary characters are
-        dropped with a warning, the same as every other tokenizer-backed engine."""
+        dropped with a warning, the same as every other tokenizer-backed engine.
+
+        The language the model is told is the call's (``SynthesisConfig.language``) where
+        the model speaks it, else the voice's own."""
         if self.tokenizer is None:
             raise RuntimeError("SuperTonic voice missing unicode_indexer_path in engine_params")
-        lang = (voice.config.lang_code or "en").split("-")[0].lower()
+        lang = (language_of(getattr(syn_config, "language", None))
+                or (voice.config.lang_code or "en").split("-")[0].lower())
         if lang not in AVAILABLE_LANGS:
             raise ValueError(f"Invalid language for supertonic: {lang}")
         max_len = 120 if lang in ("ko", "ja") else 300

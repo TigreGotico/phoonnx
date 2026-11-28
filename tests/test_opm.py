@@ -266,6 +266,15 @@ class TestGetTts(unittest.TestCase):
         self.assertEqual(configured.tts_voice.synthesize_wav.call_count, 3)
         self.assertFalse(default.tts_voice.synthesize_wav.called)
 
+    def test_get_tts_tells_a_voice_that_takes_it_the_language_of_the_call(self):
+        v = _FakeVoiceInfo("supertonic/F1/en")
+        v.tts_voice.takes_language.side_effect = lambda code: code.startswith("fr")
+        plugin, _ = _make_plugin(voices=[v])
+        with patch.object(opm, "wave"):
+            for lang, expected in (("fr-FR", "fr-FR"), ("th-TH", None), (None, None)):
+                plugin.get_tts("salut", "/tmp/out.wav", voice=v.voice_id, lang=lang)
+                self.assertEqual(self._synth_config_from_call(v.tts_voice).language, expected)
+
     def test_get_tts_in_another_language_takes_that_language_default(self):
         default = _FakeVoiceInfo("OpenVoiceOS/default", lang="pt-PT")
         configured = _FakeVoiceInfo("OpenVoiceOS/configured")
